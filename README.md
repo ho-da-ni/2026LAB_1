@@ -24,7 +24,8 @@ LAB/
 │  ├─ STRUCTURE.md
 │  ├─ API.md
 │  ├─ SPEC.md
-│  └─ DB_SCHEMA.md
+│  ├─ DB_SCHEMA.md
+│  └─ CLI.md
 ├─ src/
 │  └─ lab/
 │     └─ __init__.py
@@ -42,6 +43,23 @@ LAB/
 - `artifacts/`는 실행 결과 예시나 템플릿 산출물처럼 생성물을 보관할 때 유용하며, 소스와 결과를 분리해 비교와 검증을 쉽게 한다.
 
 자세한 설명은 `docs/STRUCTURE.md`에 정리했다.
+
+## 사용자 인터페이스 범위
+
+- 사용자 인터페이스는 **CLI 기준으로 고정**한다.
+- 초기 범위에서는 웹 UI나 운영 배포용 서비스 대신, 재현 가능한 커맨드라인 실행 흐름에 집중한다.
+- CLI 명령어 초안은 `docs/CLI.md`에 정리한다.
+
+## CLI 명령어 초안
+
+- `lab analyze`: 소스 코드와 DB 메타데이터를 분석해 IR, `run_context.json`, fingerprint를 생성한다.
+- `lab generate api`: `API.md`를 생성한다.
+- `lab generate spec`: `SPEC.md`를 생성한다.
+- `lab generate db-schema`: `DB_SCHEMA.md`를 생성한다.
+- `lab diff`: 두 Git 기준점 사이의 변경 파일과 영향 범위를 수집한다.
+- `lab validate`: 산출물과 quality check 결과를 검증한다.
+
+자세한 옵션과 예시는 `docs/CLI.md`를 따른다.
 
 ## 프로젝트 목표
 
@@ -85,3 +103,18 @@ LAB/
 ## 더 짧은 버전
 
 > LAB는 소스 코드와 DB 메타데이터를 분석해, 팩트 기반 문서를 재현 가능하게 생성하는 Python CLI 도구이다.
+
+
+## STATUS.md 운영 규칙
+- 작업 시작 전 `STATUS.md`를 읽고 현재 목표, 진행 중 항목, 다음 액션을 확인한다.
+- 계획이 확정되면 `STATUS.md`의 현재 목표와 작업 계획을 먼저 갱신한다.
+- 각 마일스톤 완료 후 `STATUS.md`를 업데이트한다.
+- 업데이트 시 아래 항목을 유지한다:
+  - 현재 목표
+  - 완료됨
+  - 진행 중
+  - 다음 액션
+  - 검증 명령 및 결과
+  - 결정사항 / 리스크
+- 검증 실패, 범위 변경, 중요한 설계 결정이 생기면 즉시 `STATUS.md`에 반영한다.
+- 세션 종료 전 반드시 `STATUS.md`를 최신 상태로 정리하고, 다음 세션 시작 프롬프트를 1~3줄로 남긴다.
