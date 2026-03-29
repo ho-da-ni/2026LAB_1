@@ -8,6 +8,7 @@
 - `API.md`: API 문서 산출물의 기본 템플릿
 - `SPEC.md`: 기능/변경 명세 문서의 기본 템플릿
 - `DB_SCHEMA.md`: DB 메타데이터 기반 스키마 문서의 기본 템플릿
+- `RUN_CONTEXT_SCHEMA.md`: `run_context.json` 스키마 초안 템플릿
 - `CLI.md`: CLI 인터페이스 범위와 명령어 초안
 
 ## 문서 운영 원칙
