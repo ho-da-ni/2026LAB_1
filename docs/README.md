@@ -9,6 +9,12 @@
 - `SPEC.md`: 기능/변경 명세 문서의 기본 템플릿
 - `DB_SCHEMA.md`: DB 메타데이터 기반 스키마 문서의 기본 템플릿
 - `RUN_CONTEXT_SCHEMA.md`: `run_context.json` 스키마 초안 템플릿
+- `REPO_META_SCHEMA.md`: `repo_meta.json` 스키마 초안 템플릿
+- `CHANGED_FILES_SCHEMA.md`: `changed_files.json` 스키마 초안 템플릿
+- `PATH_NORMALIZATION.md`: 산출물 경로 정규화 규칙
+- `DIFF_FAILURE_CONTRACT.md`: `lab diff` 실패 처리 계약
+- `INCLUDE_EXCLUDE_RULES.md`: include/exclude 필터 정책
+- `VALIDATION_TEST_SCENARIOS.md`: 검증 범위 고정용 테스트 시나리오 목록
 - `CLI.md`: CLI 인터페이스 범위와 명령어 초안
 
 ## 문서 운영 원칙

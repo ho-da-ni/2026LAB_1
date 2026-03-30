@@ -14,6 +14,12 @@
 - `RUN_CONTEXT_SCHEMA.md`에 exit code 정책(v1.0.0) 초안을 반영했다.
 - `RUN_CONTEXT_SCHEMA.md`에 quality rubric(v1.0.0) 초안을 반영했다.
 - `RUN_CONTEXT_SCHEMA.md`의 핵심 항목(스키마/무결성/종료코드/품질기준)이 문서 기준선으로 합의 가능한 수준까지 정리되었다.
+- `docs/REPO_META_SCHEMA.md`를 추가해 `repo_meta.json` 구조(원격/HEAD/히스토리/코드 통계/무결성) 초안을 정의했다.
+- `docs/CHANGED_FILES_SCHEMA.md`를 추가해 `changed_files.json` 구조(요약/파일별 변경/evidence/무결성) 초안을 정의했다.
+- `docs/PATH_NORMALIZATION.md`를 추가해 산출물 경로 정규화 절차(v1.0.0)와 적용 대상 필드를 정의했다.
+- `docs/DIFF_FAILURE_CONTRACT.md`를 추가해 `lab diff` 실패 분류/우선순위/기록 계약(v1.0.0)을 정의했다.
+- `docs/INCLUDE_EXCLUDE_RULES.md`를 추가해 include/exclude 규칙과 기본 제외(`.git/`, `build/`, `target/`) 정책을 정의했다.
+- `docs/VALIDATION_TEST_SCENARIOS.md`를 추가해 검증 범위 고정용 테스트 시나리오 목록(v1.0.0)을 정의했다.
 
 ## 진행 중
 - 문서 초안은 정리되었지만, 실제 CLI 엔트리포인트와 명령 파서는 아직 구현되지 않았다.
@@ -32,8 +38,18 @@
 - `nl -ba docs/RUN_CONTEXT_SCHEMA.md | sed -n '1,420p'` → 성공, 스키마/정책/루브릭/종료코드 규칙 최종 확인.
 - `nl -ba status.md | sed -n '1,90p'` → 성공, 세션 종료 기준 상태 반영 확인.
 - `git add docs/RUN_CONTEXT_SCHEMA.md status.md && git commit -m "Define quality rubric for run_context checks"` → 성공, 변경사항 커밋 완료.
+- `nl -ba docs/REPO_META_SCHEMA.md | sed -n '1,260p'` → 성공, repo_meta 스키마 초안 확인.
+- `nl -ba docs/CHANGED_FILES_SCHEMA.md | sed -n '1,260p'` → 성공, changed_files 스키마 초안 확인.
+- `nl -ba docs/PATH_NORMALIZATION.md | sed -n '1,260p'` → 성공, 경로 정규화 규칙 문서 확인.
+- `nl -ba docs/DIFF_FAILURE_CONTRACT.md | sed -n '1,260p'` → 성공, diff 실패 처리 계약 문서 확인.
+- `nl -ba docs/INCLUDE_EXCLUDE_RULES.md | sed -n '1,260p'` → 성공, include/exclude 정책 문서 확인.
+- `nl -ba docs/VALIDATION_TEST_SCENARIOS.md | sed -n '1,320p'` → 성공, 검증 시나리오 목록 문서 확인.
+
+- `lab diff --repo . --base main --head HEAD --output artifacts/test-runs/S01/changed_files.json` → 실패(`lab: command not found`), CLI 엔트리포인트 미구현으로 시나리오 실행 불가.
+- `PYTHONPATH=src python -m lab --help` → 실패(`No module named lab.__main__`), 패키지 실행 진입점 부재 확인.
 
 ## 주의사항 / 리스크
+- 현재 `lab` CLI 엔트리포인트가 없어 `VALIDATION_TEST_SCENARIOS.md`의 실행 검증(S01~S08)을 즉시 자동화할 수 없다.
 - 현재 내용은 문서 기준선이며, 실제 구현 시 필드명/출력 경로/체크 세부 규칙이 일부 조정될 수 있다.
 - 다만 `No guessing`, `UNKNOWN/needs_review` 처리, 재현성 우선 원칙은 변경하지 않는다.
 - fingerprint 정책 변경 시 기존 산출물과 해시 호환성이 깨질 수 있으므로 `schema_version`/정책 버전 동시 관리가 필요하다.

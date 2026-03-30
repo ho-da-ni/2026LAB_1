@@ -17,7 +17,10 @@ LAB의 사용자 인터페이스는 **CLI 기준으로 고정**한다.
 - `--repo PATH`: 분석 대상 저장소 경로
 - `--git-ref REF`: 분석 기준 Git ref, commit, tag
 - `--db-meta PATH`: DB 메타데이터 입력 파일 경로
+- `--repo-meta PATH`: 저장소 메타데이터(`repo_meta.json`) 입력 파일 경로
 - `--output-dir PATH`: 산출물 출력 디렉터리
+- `--include PATH_OR_GLOB`: 분석 포함 경로/패턴(복수 지정 가능)
+- `--exclude PATH_OR_GLOB`: 분석 제외 경로/패턴(복수 지정 가능)
 - `--format [md|json|all]`: 출력 형식 선택
 - `--config PATH`: 설정 파일 경로
 - `--strict`: 확인 불가능한 팩트가 있으면 실패 처리
@@ -31,12 +34,13 @@ LAB의 사용자 인터페이스는 **CLI 기준으로 고정**한다.
 예시:
 
 ```bash
-lab analyze --repo . --git-ref HEAD --db-meta ./examples/db_meta.json --output-dir ./artifacts/run-001
+lab analyze --repo . --git-ref HEAD --db-meta ./examples/db_meta.json --repo-meta ./examples/repo_meta.json --output-dir ./artifacts/run-001
 ```
 
 예상 결과:
 - JSON IR 생성
 - `run_context.json` 생성
+- `repo_meta.json` 검증/연동
 - fingerprint 생성
 - 분석 로그 출력
 
@@ -68,12 +72,14 @@ lab generate db-schema --input ./artifacts/run-001/ir.json --output ./artifacts/
 ```
 
 ### `lab diff`
-두 Git 기준점 사이의 변경 파일과 영향 범위를 수집한다.
+두 Git 기준점 사이의 변경 파일과 영향 범위를 수집하고 `changed_files.json`을 생성한다.
+실패 처리(exit code, 최소 기록 필드, 체크 이름)는 `docs/DIFF_FAILURE_CONTRACT.md`를 따른다.
+필터 적용 규칙과 기본 제외 경로(`.git/`, `build/`, `target/`)는 `docs/INCLUDE_EXCLUDE_RULES.md`를 따른다.
 
 예시:
 
 ```bash
-lab diff --repo . --base main --head HEAD --output ./artifacts/run-001/diff.json
+lab diff --repo . --base main --head HEAD --output ./artifacts/run-001/changed_files.json
 ```
 
 ### `lab validate`
