@@ -58,7 +58,7 @@
   },
   "analysis_scope": {
     "include_paths": [],
-    "exclude_paths": [],
+    "exclude_paths": [".git/", "build/", "target/"],
     "file_count": "UNKNOWN",
     "language_set": [],
     "module_count": "UNKNOWN"
@@ -68,6 +68,7 @@
     "api_md_path": "UNKNOWN",
     "spec_md_path": "UNKNOWN",
     "db_schema_md_path": "UNKNOWN",
+    "changed_files_path": "UNKNOWN",
     "fingerprint": "UNKNOWN",
     "artifact_dir": "UNKNOWN"
   },
@@ -78,7 +79,8 @@
       "failed": "UNKNOWN",
       "warnings": "UNKNOWN"
     },
-    "rubric_version": "1.0.0"
+    "rubric_version": "1.0.0",
+    "test_scenario_set_version": "1.0.0"
   },
   "integrity": {
     "input_fingerprint": "UNKNOWN",
@@ -88,7 +90,8 @@
       "algorithm": "sha256",
       "normalization": "stable_json_canonicalization",
       "include": [],
-      "exclude": []
+      "exclude": [],
+      "path_normalization_version": "1.0.0"
     }
   },
   "notes": [
@@ -121,13 +124,15 @@
 
 ### analysis_scope
 - 포함/제외 경로, 분석 파일 수, 언어 집합, 모듈 수.
+- 기본 제외 경로: `.git/`, `build/`, `target/` (정책: `docs/INCLUDE_EXCLUDE_RULES.md`).
 
 ### outputs
-- IR/문서 산출물 경로, fingerprint, artifact 디렉터리.
+- IR/문서/changed_files 산출물 경로, fingerprint, artifact 디렉터리.
 
 ### quality_checks
 - 개별 체크 결과 배열(`checks`)과 집계(`summary`).
 - `quality_checks.rubric_version`: quality rubric 해석 기준 버전.
+- `quality_checks.test_scenario_set_version`: 검증 시나리오 세트 버전(`docs/VALIDATION_TEST_SCENARIOS.md`).
 
 ### integrity
 - 입력/출력 fingerprint 및 결정론성 비교 키.
@@ -178,6 +183,8 @@
 - `spec_md_generated` (major)
 - `db_schema_md_generated` (major)
 - `source_evidence_minimum_coverage` (major)
+- `diff_ref_resolved` (major, `lab diff` 수행 시)
+- `changed_files_schema_valid` (major, `lab diff` 수행 시)
 
 ### 점수 계산(권장)
 - 시작 점수 100점에서 감점:
@@ -205,7 +212,7 @@
   - Git 기준점: `inputs.repo.commit`, `inputs.repo.diff_base`, `inputs.repo.diff_target`
   - DB 메타데이터 식별자: `inputs.db_metadata.snapshot_id`
   - 설정 식별자: `inputs.config.hash_sha256`, `inputs.config.profile`
-  - 분석 범위: `analysis_scope.include_paths`, `analysis_scope.exclude_paths`
+  - 분석 범위: `analysis_scope.include_paths`, `analysis_scope.exclude_paths` (기본 제외 `.git/`, `build/`, `target/` 포함)
   - 도구 버전: `tool.name`, `tool.version`
 
 ### 제외(`exclude`) 원칙
@@ -213,12 +220,13 @@
 - 권장 제외 대상:
   - 시각/시간값: `created_at_utc`, `execution.start_time_utc`, `execution.end_time_utc`, `execution.duration_ms`
   - 경로/환경값: `workspace.root_path`, `workspace.os`, `workspace.python_version`
-  - 결과 위치값: `outputs.ir_path`, `outputs.api_md_path`, `outputs.spec_md_path`, `outputs.db_schema_md_path`, `outputs.artifact_dir`
+  - 결과 위치값: `outputs.ir_path`, `outputs.api_md_path`, `outputs.spec_md_path`, `outputs.db_schema_md_path`, `outputs.changed_files_path`, `outputs.artifact_dir`
   - 일회성 실행값: `run_id`, `execution.command`, `execution.argv`
   - 운영 메모: `notes`, `needs_review`
 
 ### 정규화 규칙
 - JSON 직렬화 시 key 정렬을 고정한다.
+- 경로 필드는 `docs/PATH_NORMALIZATION.md` v1.0.0을 적용한다.
 - 리스트는 의미가 "집합"인 경우 정렬 후 해시한다(예: `language_set`, include/exclude path 목록).
 - 경로 구분자와 대소문자는 OS 차이를 고려해 canonical form으로 정규화한다.
 - `UNKNOWN` 값은 그대로 문자열로 유지해 해시 입력에 포함한다(누락과 구분).
@@ -245,6 +253,8 @@
 - `7`: 재현성/무결성 실패 (fingerprint 불일치, determinism key 검증 실패)
 - `8`: 외부 의존성 실패 (VCS/DB/파일시스템/권한/네트워크 접근 실패)
 - `9`: 인터럽트/취소 (`SIGINT`, 사용자 취소, 타임아웃 정책에 의한 중단)
+
+참고: `lab diff` 전용 실패 분류/우선순위는 `docs/DIFF_FAILURE_CONTRACT.md`를 따른다.
 
 ### 적용 규칙
 - 하나의 실행에서 복수 오류가 발생하면 **가장 먼저 발생한 치명 오류 코드**를 반환한다.

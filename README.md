@@ -25,6 +25,13 @@ LAB/
 │  ├─ API.md
 │  ├─ SPEC.md
 │  ├─ DB_SCHEMA.md
+│  ├─ RUN_CONTEXT_SCHEMA.md
+│  ├─ REPO_META_SCHEMA.md
+│  ├─ CHANGED_FILES_SCHEMA.md
+│  ├─ PATH_NORMALIZATION.md
+│  ├─ DIFF_FAILURE_CONTRACT.md
+│  ├─ INCLUDE_EXCLUDE_RULES.md
+│  ├─ VALIDATION_TEST_SCENARIOS.md
 │  └─ CLI.md
 ├─ src/
 │  └─ lab/
@@ -93,6 +100,10 @@ LAB/
 - quality check 결과
 
 기본 문서 템플릿은 `docs/API.md`, `docs/SPEC.md`, `docs/DB_SCHEMA.md`에 준비했다.
+`run_context.json`/`repo_meta.json`/`changed_files.json` 구조 초안은 `docs/RUN_CONTEXT_SCHEMA.md`, `docs/REPO_META_SCHEMA.md`, `docs/CHANGED_FILES_SCHEMA.md`를 따르며 경로 정규화는 `docs/PATH_NORMALIZATION.md`를 따른다.
+`lab diff` 실패 처리 기준은 `docs/DIFF_FAILURE_CONTRACT.md`를 따른다.
+include/exclude 기본 제외 경로(`.git/`, `build/`, `target/`) 정책은 `docs/INCLUDE_EXCLUDE_RULES.md`를 따른다.
+검증 범위 고정용 시나리오 목록은 `docs/VALIDATION_TEST_SCENARIOS.md`를 따른다.
 
 ## 완료 기준 (DoD)
 
