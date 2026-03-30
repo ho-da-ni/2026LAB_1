@@ -1,60 +1,47 @@
 # STATUS.md
 
 ## 현재 목표
-- 문서 초안 단계를 마무리하고, 다음 세션에서 `run_context.json` 생성/검증 로직 구현을 바로 시작할 수 있는 상태를 만든다.
+- `lab diff`의 검증 시나리오(S01~S08)를 문서 기준에 맞게 안정적으로 재현하고, 남은 과제는 `lab validate` 자동 판정기 구현으로 좁힌다.
 
 ## 완료됨
-- 프로젝트 한 줄 정의, 목표, 비목표, 핵심 원칙, 산출물 기준을 `README.md`에 정리했다.
-- 기본 폴더 구조와 문서 템플릿(`API.md`, `SPEC.md`, `DB_SCHEMA.md`, `CLI.md`)을 추가했다.
-- 사용자 인터페이스 범위를 CLI로 고정하고, CLI 명령어 초안을 문서화했다.
-- `STATUS.md` 운영 규칙을 `README.md`에 반영했다.
-- 이번 세션 종료 기준으로 `STATUS.md`를 최신 상태로 갱신했다.
-- `run_context.json` 구조 정의를 위한 `docs/RUN_CONTEXT_SCHEMA.md` 초안을 추가했다.
-- `RUN_CONTEXT_SCHEMA.md`에 fingerprint 포함/제외 및 정규화 규칙 초안을 반영했다.
-- `RUN_CONTEXT_SCHEMA.md`에 exit code 정책(v1.0.0) 초안을 반영했다.
-- `RUN_CONTEXT_SCHEMA.md`에 quality rubric(v1.0.0) 초안을 반영했다.
-- `RUN_CONTEXT_SCHEMA.md`의 핵심 항목(스키마/무결성/종료코드/품질기준)이 문서 기준선으로 합의 가능한 수준까지 정리되었다.
-- `docs/REPO_META_SCHEMA.md`를 추가해 `repo_meta.json` 구조(원격/HEAD/히스토리/코드 통계/무결성) 초안을 정의했다.
-- `docs/CHANGED_FILES_SCHEMA.md`를 추가해 `changed_files.json` 구조(요약/파일별 변경/evidence/무결성) 초안을 정의했다.
-- `docs/PATH_NORMALIZATION.md`를 추가해 산출물 경로 정규화 절차(v1.0.0)와 적용 대상 필드를 정의했다.
-- `docs/DIFF_FAILURE_CONTRACT.md`를 추가해 `lab diff` 실패 분류/우선순위/기록 계약(v1.0.0)을 정의했다.
-- `docs/INCLUDE_EXCLUDE_RULES.md`를 추가해 include/exclude 규칙과 기본 제외(`.git/`, `build/`, `target/`) 정책을 정의했다.
-- `docs/VALIDATION_TEST_SCENARIOS.md`를 추가해 검증 범위 고정용 테스트 시나리오 목록(v1.0.0)을 정의했다.
+- `src/lab/`에 CLI 엔트리포인트(`python -m lab`)와 `analyze`/`diff` 기본 동작을 구현했다.
+- `lab diff`가 `changed_files.json`을 생성하고, ref 해석 실패 시 `exit_code=3`, 출력 실패 시 `exit_code=5`, 무결성 불일치 시 `exit_code=7`을 반환하도록 구현했다.
+- include/exclude 패턴 정규화(`_normalize_match_pattern`)를 추가해 S07 경로 패턴 케이스를 통과시켰다.
+- `generated_at_utc` 변동이 fingerprint를 흔들지 않도록, fingerprint 계산 시 `generated_at_utc`를 제외했다.
+- S08 재실행 결정론성 검증에서 동일 입력 2회 실행 시 산출물 해시 동일을 확인했다.
+- S02 대응으로 기본 제외 경로(`.git/`, `build/`, `target/`)가 실제 적용된 경우 `needs_review`에 `default_excludes_applied` 증거를 남기도록 구현했다.
+- S06 대응으로 `--test-hook-force-integrity-mismatch` 테스트 훅을 추가해 무결성 불일치 경로(`exit_code=7`)를 재현 가능하게 만들었다.
+- 로컬에 `main` 브랜치 ref가 없는 환경 이슈를 보완하기 위해 세션 중 로컬 `main` ref를 생성하여 main 기준 diff 검증을 진행했다.
 
 ## 진행 중
-- 문서 초안은 정리되었지만, 실제 CLI 엔트리포인트와 명령 파서는 아직 구현되지 않았다.
-- 예제 입력/기대 산출물/자동화 테스트는 아직 준비되지 않았다.
-- `run_context.json` 스키마의 필수/선택 필드 구분과 코드 구현 연동은 아직 남아 있다.
-- quality rubric 점수 계산/등급 산정을 실제 `lab validate` 결과와 연결하는 구현이 남아 있다.
+- `validate` 서브커맨드는 아직 TODO 상태이며, 시나리오별 체크 결과를 공식 판정 리포트로 출력하지 못한다.
+- S02/S06은 현재 diff 실행 + 보조 검증(임시 repo/테스트 훅) 방식으로 확인하고 있으며, CI용 일괄 자동 판정 스크립트는 미구현이다.
 
 ## 다음 액션
-1. `src/lab/`에 최소 CLI 엔트리포인트를 만들고 `lab analyze`에서 `run_context.json`을 실제 생성하도록 연결한다.  ← 다음 세션 첫 액션
-2. 생성된 `run_context.json`이 `docs/RUN_CONTEXT_SCHEMA.md`의 필수 필드를 만족하는지 검증 로직을 추가한다.
-3. `lab validate`에서 exit code 정책(v1.0.0)과 quality rubric(v1.0.0) 판정 로직을 구현한다.
-4. 예제 입력/기대 산출물/회귀 테스트를 추가해 재현성과 fingerprint 정책을 자동 검증한다.
+1. `lab validate` 구현: S01~S08 체크를 구조화해 pass/fail 및 evidence를 단일 리포트로 출력.
+2. S02/S06 전용 fixture/훅을 테스트 코드로 내장해 로컬/CI 모두에서 동일하게 재현.
+3. main/feature 기준 샘플 repo fixture(`examples/repo-sample`)를 실제로 추가해 문서 사전조건과 실행환경 일치.
+4. STATUS.md 검증 명령 섹션을 세션 단위로 누적 관리할 수 있게 간소화 규칙 정리.
 
-## 검증 명령
-- `git status --short` → 성공, 변경 대상 파일 상태 확인.
-- `nl -ba docs/RUN_CONTEXT_SCHEMA.md | sed -n '1,420p'` → 성공, 스키마/정책/루브릭/종료코드 규칙 최종 확인.
-- `nl -ba status.md | sed -n '1,90p'` → 성공, 세션 종료 기준 상태 반영 확인.
-- `git add docs/RUN_CONTEXT_SCHEMA.md status.md && git commit -m "Define quality rubric for run_context checks"` → 성공, 변경사항 커밋 완료.
-- `nl -ba docs/REPO_META_SCHEMA.md | sed -n '1,260p'` → 성공, repo_meta 스키마 초안 확인.
-- `nl -ba docs/CHANGED_FILES_SCHEMA.md | sed -n '1,260p'` → 성공, changed_files 스키마 초안 확인.
-- `nl -ba docs/PATH_NORMALIZATION.md | sed -n '1,260p'` → 성공, 경로 정규화 규칙 문서 확인.
-- `nl -ba docs/DIFF_FAILURE_CONTRACT.md | sed -n '1,260p'` → 성공, diff 실패 처리 계약 문서 확인.
-- `nl -ba docs/INCLUDE_EXCLUDE_RULES.md | sed -n '1,260p'` → 성공, include/exclude 정책 문서 확인.
-- `nl -ba docs/VALIDATION_TEST_SCENARIOS.md | sed -n '1,320p'` → 성공, 검증 시나리오 목록 문서 확인.
+## 검증 명령 및 결과
+- `PYTHONPATH=src python -m lab --help` → 성공, CLI 진입점 확인.
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /tmp/lab-tests/rerun/S01_changed_files.json` → 성공(S01).
+- `PYTHONPATH=src python -m lab diff --repo /tmp/lab-s02-repo-rerun --base main --head feature/test-diff --output /tmp/lab-tests/rerun/S02_changed_files.json` → 성공(S02), `summary.total_files=0`, `needs_review.default_excludes_applied=pass` 확인.
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --include 'src/**' --exclude 'src/**' --output /tmp/lab-tests/rerun/S03_changed_files.json` → 성공(S03), 대상 파일 0건.
+- `PYTHONPATH=src python -m lab diff --repo . --base does-not-exist --head HEAD --output /tmp/lab-tests/rerun/S04_changed_files.json` → 실패 의도대로 `exit_code=3` 확인(S04).
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /proc/1/S05_changed_files.json` → 실패 의도대로 `exit_code=5` 확인(S05).
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --test-hook-force-integrity-mismatch --output /tmp/lab-tests/rerun/S06_changed_files.json` → 실패 의도대로 `exit_code=7` 확인(S06).
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --include './src//lab/../lab/*.py' --output /tmp/lab-tests/rerun/S07_changed_files.json` → 성공(S07), 정규화 패턴 매칭 확인.
+- `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /tmp/lab-tests/rerun/S08_run1.json`
+  + `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /tmp/lab-tests/rerun/S08_run2.json`
+  + `sha256sum /tmp/lab-tests/rerun/S08_run1.json /tmp/lab-tests/rerun/S08_run2.json` → 성공(S08), 해시 동일.
 
-- `lab diff --repo . --base main --head HEAD --output artifacts/test-runs/S01/changed_files.json` → 실패(`lab: command not found`), CLI 엔트리포인트 미구현으로 시나리오 실행 불가.
-- `PYTHONPATH=src python -m lab --help` → 실패(`No module named lab.__main__`), 패키지 실행 진입점 부재 확인.
-
-## 주의사항 / 리스크
-- 현재 `lab` CLI 엔트리포인트가 없어 `VALIDATION_TEST_SCENARIOS.md`의 실행 검증(S01~S08)을 즉시 자동화할 수 없다.
-- 현재 내용은 문서 기준선이며, 실제 구현 시 필드명/출력 경로/체크 세부 규칙이 일부 조정될 수 있다.
-- 다만 `No guessing`, `UNKNOWN/needs_review` 처리, 재현성 우선 원칙은 변경하지 않는다.
-- fingerprint 정책 변경 시 기존 산출물과 해시 호환성이 깨질 수 있으므로 `schema_version`/정책 버전 동시 관리가 필요하다.
-- quality rubric/exit code 정책은 CI와 직결되므로 임의 변경 시 버전 증가 및 마이그레이션 노트가 필요하다.
+## 결정사항 / 리스크
+- 결정: `generated_at_utc`는 payload에 유지하되 fingerprint 계산에서는 제외한다.
+- 결정: S06은 운영 경로 오염 없이 검증하기 위해 숨김 테스트 훅을 허용한다.
+- 리스크: 현재 `validate` 미구현으로, 시나리오 pass/fail을 CLI 단일 명령으로 확정하기 어렵다.
+- 리스크: 테스트 시 임시 로컬 브랜치/임시 repo 생성이 필요해 환경 의존성이 남아 있다.
 
 ## 다음 세션 시작 프롬프트
-- STATUS.md와 AGENTS.md를 먼저 읽은 뒤, `src/lab/`에 CLI 엔트리포인트를 만들고 `lab analyze`에서 `run_context.json`을 생성하도록 구현을 시작해.
-- 구현 직후 샘플 실행으로 `run_context.json`을 만들고, `docs/RUN_CONTEXT_SCHEMA.md` 필수 필드 충족 여부를 먼저 검증해.
+- STATUS.md와 AGENTS.md를 먼저 확인한 뒤 `lab validate`를 구현해 S01~S08을 단일 리포트로 판정해.
+- S02/S06 fixture를 테스트 코드로 고정하고, `examples/repo-sample` 기준으로 main/feature 사전조건을 맞춰.

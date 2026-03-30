@@ -6,6 +6,7 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import posixpath
 import platform
 import subprocess
 import sys
@@ -147,6 +148,11 @@ def _normalize_path(path: str) -> str:
     return str(Path(path).as_posix()).lstrip("./")
 
 
+def _normalize_match_pattern(pattern: str) -> str:
+    normalized = posixpath.normpath(pattern.replace("\\", "/"))
+    return normalized.lstrip("./")
+
+
 def _match_any(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
@@ -158,6 +164,13 @@ def _is_excluded(path: str, excludes: list[str]) -> bool:
     return _match_any(path, excludes)
 
 
+def _is_default_excluded(path: str) -> bool:
+    for prefix in DEFAULT_EXCLUDES:
+        if path == prefix.rstrip("/") or path.startswith(prefix):
+            return True
+    return False
+
+
 def _is_included(path: str, includes: list[str]) -> bool:
     if not includes:
         return True
@@ -167,8 +180,15 @@ def _is_included(path: str, includes: list[str]) -> bool:
 def _build_changed_files(repo: str, base: str, head: str, includes: list[str], excludes: list[str]) -> dict[str, Any]:
     merge_base = _run_git(repo, ["merge-base", base, head])
     diff_output = _run_git(repo, ["diff", "--name-status", base, head])
+    generated_at_utc = _git_value(repo, "log", "-1", "--format=%cI", head)
+    if generated_at_utc != "UNKNOWN":
+        parsed_generated_at = datetime.fromisoformat(generated_at_utc)
+        generated_at_utc = parsed_generated_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    else:
+        generated_at_utc = _utc_now_iso()
 
     files: list[dict[str, Any]] = []
+    default_excluded_paths: list[str] = []
     summary = {"A": 0, "M": 0, "D": 0, "R": 0}
 
     for raw in diff_output.splitlines():
@@ -187,6 +207,8 @@ def _build_changed_files(repo: str, base: str, head: str, includes: list[str], e
             continue
 
         if _is_excluded(path, excludes):
+            if _is_default_excluded(path):
+                default_excluded_paths.append(path)
             continue
         if not _is_included(path, includes):
             continue
@@ -214,7 +236,7 @@ def _build_changed_files(repo: str, base: str, head: str, includes: list[str], e
 
     payload: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "generated_at_utc": _utc_now_iso(),
+        "generated_at_utc": generated_at_utc,
         "repo": {"vcs": "git", "base": base, "head": head, "merge_base": merge_base or "UNKNOWN"},
         "summary": {
             "total_files": len(files),
@@ -229,7 +251,22 @@ def _build_changed_files(repo: str, base: str, head: str, includes: list[str], e
         "needs_review": [],
     }
 
-    fingerprint_source = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    if default_excluded_paths:
+        payload["needs_review"].append(
+            {
+                "check": "default_excludes_applied",
+                "status": "pass",
+                "evidence": {
+                    "default_excludes": DEFAULT_EXCLUDES,
+                    "excluded_count": len(default_excluded_paths),
+                    "sample_paths": sorted(set(default_excluded_paths))[:10],
+                },
+            }
+        )
+
+    fingerprint_payload = dict(payload)
+    fingerprint_payload.pop("generated_at_utc", None)
+    fingerprint_source = json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True)
     payload["integrity"]["fingerprint"] = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
     return payload
 
@@ -249,8 +286,8 @@ def _handle_analyze(args: argparse.Namespace) -> int:
 
 
 def _handle_diff(args: argparse.Namespace) -> int:
-    includes = args.include or []
-    excludes = args.exclude or []
+    includes = [_normalize_match_pattern(pattern) for pattern in (args.include or [])]
+    excludes = [_normalize_match_pattern(pattern) for pattern in (args.exclude or [])]
 
     try:
         payload = _build_changed_files(args.repo, args.base, args.head, includes, excludes)
@@ -260,6 +297,9 @@ def _handle_diff(args: argparse.Namespace) -> int:
     except RuntimeError as exc:
         print(f"[ERROR] diff ref resolution failed: {exc}", file=sys.stderr)
         return 3
+
+    if args.test_hook_force_integrity_mismatch:
+        payload["summary"]["total_files"] += 1
 
     if payload["summary"]["total_files"] != len(payload["files"]):
         print("[ERROR] changed_files integrity mismatch", file=sys.stderr)
@@ -296,6 +336,7 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--output", required=True, help="Path to write changed_files.json")
     diff_parser.add_argument("--include", action="append", help="Include path/glob pattern")
     diff_parser.add_argument("--exclude", action="append", help="Exclude path/glob pattern")
+    diff_parser.add_argument("--test-hook-force-integrity-mismatch", action="store_true", help=argparse.SUPPRESS)
 
     subparsers.add_parser("validate", help="Validate generated artifacts")
 
