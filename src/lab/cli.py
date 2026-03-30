@@ -6,6 +6,7 @@ import argparse
 import fnmatch
 import hashlib
 import json
+import posixpath
 import platform
 import subprocess
 import sys
@@ -147,6 +148,11 @@ def _normalize_path(path: str) -> str:
     return str(Path(path).as_posix()).lstrip("./")
 
 
+def _normalize_match_pattern(pattern: str) -> str:
+    normalized = posixpath.normpath(pattern.replace("\\", "/"))
+    return normalized.lstrip("./")
+
+
 def _match_any(path: str, patterns: list[str]) -> bool:
     return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
 
@@ -167,6 +173,12 @@ def _is_included(path: str, includes: list[str]) -> bool:
 def _build_changed_files(repo: str, base: str, head: str, includes: list[str], excludes: list[str]) -> dict[str, Any]:
     merge_base = _run_git(repo, ["merge-base", base, head])
     diff_output = _run_git(repo, ["diff", "--name-status", base, head])
+    generated_at_utc = _git_value(repo, "log", "-1", "--format=%cI", head)
+    if generated_at_utc != "UNKNOWN":
+        parsed_generated_at = datetime.fromisoformat(generated_at_utc)
+        generated_at_utc = parsed_generated_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    else:
+        generated_at_utc = _utc_now_iso()
 
     files: list[dict[str, Any]] = []
     summary = {"A": 0, "M": 0, "D": 0, "R": 0}
@@ -214,7 +226,7 @@ def _build_changed_files(repo: str, base: str, head: str, includes: list[str], e
 
     payload: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "generated_at_utc": _utc_now_iso(),
+        "generated_at_utc": generated_at_utc,
         "repo": {"vcs": "git", "base": base, "head": head, "merge_base": merge_base or "UNKNOWN"},
         "summary": {
             "total_files": len(files),
@@ -229,7 +241,9 @@ def _build_changed_files(repo: str, base: str, head: str, includes: list[str], e
         "needs_review": [],
     }
 
-    fingerprint_source = json.dumps(payload, ensure_ascii=False, sort_keys=True)
+    fingerprint_payload = dict(payload)
+    fingerprint_payload.pop("generated_at_utc", None)
+    fingerprint_source = json.dumps(fingerprint_payload, ensure_ascii=False, sort_keys=True)
     payload["integrity"]["fingerprint"] = hashlib.sha256(fingerprint_source.encode("utf-8")).hexdigest()
     return payload
 
@@ -249,8 +263,8 @@ def _handle_analyze(args: argparse.Namespace) -> int:
 
 
 def _handle_diff(args: argparse.Namespace) -> int:
-    includes = args.include or []
-    excludes = args.exclude or []
+    includes = [_normalize_match_pattern(pattern) for pattern in (args.include or [])]
+    excludes = [_normalize_match_pattern(pattern) for pattern in (args.exclude or [])]
 
     try:
         payload = _build_changed_files(args.repo, args.base, args.head, includes, excludes)
