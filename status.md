@@ -22,6 +22,7 @@
 - Controller/Endpoint 탐지 fixture 케이스 목록 문서(`docs/CONTROLLER_DETECTION_FIXTURE_CASES.md`)를 추가하고 docs 인덱스에 등록했다.
 - endpoint 기대값 JSON(`fixtures/controller_detection/endpoints.fixture.json`)과 golden snapshot JSON(`fixtures/controller_detection/golden_snapshots.json`)을 추가했다.
 - golden fixture 품질 게이트 결과 파일(`fixtures/controller_detection/quality_gate_report.json`)을 추가하고 `quality_high=PASS` 기준을 반영했다.
+- endpoint fixture JSON 포맷을 정리하고(`quality_gate_high` 포함), golden snapshot/quality gate와의 정합성을 확인했다.
 
 ## 진행 중
 - `validate` 서브커맨드는 아직 TODO 상태이며, 시나리오별 체크 결과를 공식 판정 리포트로 출력하지 못한다.
@@ -53,5 +54,5 @@
 - 리스크: 테스트 시 임시 로컬 브랜치/임시 repo 생성이 필요해 환경 의존성이 남아 있다.
 
 ## 다음 세션 시작 프롬프트
-- STATUS.md와 AGENTS.md를 먼저 확인한 뒤 `lab validate`를 구현해 S01~S08을 단일 리포트로 판정해.
-- S02/S06 fixture를 테스트 코드로 고정하고, `examples/repo-sample` 기준으로 main/feature 사전조건을 맞춰.
+- STATUS.md와 AGENTS.md를 먼저 확인한 뒤 `fixtures/controller_detection/*`를 실제 `lab validate` 입력으로 연결해 자동 판정 경로를 완성해.
+- fixture case(`C/M/I/E/X`)별 expected/golden 비교를 테스트 코드로 고정하고, 품질 게이트(`quality_high`)를 CI에서 fail-fast로 평가해.
