@@ -1,0 +1,106 @@
+{
+  "version": "v1",
+  "description": "Controller/Endpoint 탐지 fixture의 endpoint 기대값 목록",
+  "quality_gate_high": "PASS",
+  "cases": [
+    {
+      "case_id": "C001",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/users",
+          "handler": "com.example.UserController#getUsers()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "C002",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/admin/{id}",
+          "handler": "com.example.UserController#getUser(String)",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        },
+        {
+          "method": "GET",
+          "path": "/admin/users",
+          "handler": "com.example.UserController#getUsers()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        },
+        {
+          "method": "GET",
+          "path": "/api/{id}",
+          "handler": "com.example.UserController#getUser(String)",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        },
+        {
+          "method": "GET",
+          "path": "/api/users",
+          "handler": "com.example.UserController#getUsers()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "M003",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "POST",
+          "path": "/api/users",
+          "handler": "com.example.UserController#createUser(UserCreateRequest)",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "M004",
+      "framework": "spring_boot",
+      "expected_endpoints": [],
+      "expected_needs_review": [
+        "mapping_method_conflict"
+      ],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "E001",
+      "framework": "egovframe",
+      "expected_endpoints": [
+        {
+          "method": "UNKNOWN",
+          "path": "/usr/selectUserList.do",
+          "handler": "egovframework.usr.web.UserController#selectUserList(UserVO,ModelMap)",
+          "endpoint_type": "view",
+          "confidence": "needs_review"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "X003",
+      "framework": "egovframe",
+      "expected_endpoints": [],
+      "expected_needs_review": [
+        "mapping_route_conflict"
+      ],
+      "quality_gate_high": "PASS"
+    }
+  ]
+}
