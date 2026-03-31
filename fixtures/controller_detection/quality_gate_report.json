@@ -1,0 +1,40 @@
+{
+  "version": "v1",
+  "gate_name": "quality_high",
+  "result": "PASS",
+  "summary": {
+    "total_cases": 6,
+    "pass_cases": 6,
+    "fail_cases": 0
+  },
+  "checks": [
+    {
+      "check_id": "QH-01",
+      "name": "endpoint fixture schema completeness",
+      "result": "PASS"
+    },
+    {
+      "check_id": "QH-02",
+      "name": "golden snapshot endpoint_id presence",
+      "result": "PASS"
+    },
+    {
+      "check_id": "QH-03",
+      "name": "deterministic canonical_source format",
+      "result": "PASS"
+    },
+    {
+      "check_id": "QH-04",
+      "name": "needs_review code consistency",
+      "result": "PASS"
+    }
+  ],
+  "evaluated_case_ids": [
+    "C001",
+    "C002",
+    "M003",
+    "M004",
+    "E001",
+    "X003"
+  ]
+}

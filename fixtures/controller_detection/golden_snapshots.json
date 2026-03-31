@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "description": "Controller/Endpoint 탐지 fixture golden snapshot",
+  "generated_policy": "deterministic-static",
+  "quality_gate_high": "PASS",
+  "snapshots": [
+    {
+      "case_id": "C001",
+      "canonical_source": "v1|GET|/api/users|com.example.UserController#getUsers()|-",
+      "endpoint_id": "ep_64253e4d477784b3",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/api/users",
+        "handler": "com.example.UserController#getUsers()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "M003",
+      "canonical_source": "v1|POST|/api/users|com.example.UserController#createUser(UserCreateRequest)|consumes=application/json",
+      "endpoint_id": "ep_95244314b721461d",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "POST",
+        "path": "/api/users",
+        "handler": "com.example.UserController#createUser(UserCreateRequest)",
+        "condition_fingerprint": "consumes=application/json",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "E001",
+      "canonical_source": "v1|UNKNOWN|/usr/selectUserList.do|egovframework.usr.web.UserController#selectUserList(UserVO,ModelMap)|-",
+      "endpoint_id": "ep_6a979d6b182b5aba",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "UNKNOWN",
+        "path": "/usr/selectUserList.do",
+        "handler": "egovframework.usr.web.UserController#selectUserList(UserVO,ModelMap)",
+        "condition_fingerprint": "-",
+        "confidence": "needs_review"
+      }
+    }
+  ]
+}

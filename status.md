@@ -12,6 +12,16 @@
 - S02 대응으로 기본 제외 경로(`.git/`, `build/`, `target/`)가 실제 적용된 경우 `needs_review`에 `default_excludes_applied` 증거를 남기도록 구현했다.
 - S06 대응으로 `--test-hook-force-integrity-mismatch` 테스트 훅을 추가해 무결성 불일치 경로(`exit_code=7`)를 재현 가능하게 만들었다.
 - 로컬에 `main` 브랜치 ref가 없는 환경 이슈를 보완하기 위해 세션 중 로컬 `main` ref를 생성하여 main 기준 diff 검증을 진행했다.
+- Spring Boot/전자정부프레임워크 Controller 탐지 전용 룰셋 문서(`docs/SPRING_BOOT_CONTROLLER_DETECTION_RULES.md`, `docs/EGOVFRAME_CONTROLLER_DETECTION_RULES.md`)를 추가하고 문서 인덱스(`docs/README.md`)를 갱신했다.
+- Spring Boot/eGovFrame 룰셋에 mapping 합성 규칙(클래스/메서드 결합, method 교집합, 외부 prefix unresolved 처리, `needs_review` 충돌 코드)을 상세화했다.
+- mapping 합성 규칙에 `(ClassMapping × MethodMapping)` 조합 정의, endpoint key 규칙, 조합 예시를 추가해 구현 기준을 명시했다.
+- multi-path 처리 규칙(수집/정규화/전개/정렬/dedupe/충돌/폭증 제어)과 관련 `needs_review` 코드 정의를 룰셋에 추가했다.
+- multi-path 배열 처리 방식(문자열 승격, union 병합, 빈값 정규화, 인덱스 evidence, 빈 배열 대체 규칙)을 추가로 명시했다.
+- multi-method 처리 규칙과 HTTP 배열 처리 방식(문자열/배열 승격, 교집합 산출, dedupe, 빈 배열 `UNKNOWN_METHOD` 치환)을 Spring Boot/eGovFrame 룰셋에 추가했다.
+- endpoint_id 생성 규칙(canonical source, `ep_`+sha1 16자리, 비본질 메타데이터 제외, collision 처리)을 Spring Boot/eGovFrame 룰셋에 추가했다.
+- Controller/Endpoint 탐지 fixture 케이스 목록 문서(`docs/CONTROLLER_DETECTION_FIXTURE_CASES.md`)를 추가하고 docs 인덱스에 등록했다.
+- endpoint 기대값 JSON(`fixtures/controller_detection/endpoints.fixture.json`)과 golden snapshot JSON(`fixtures/controller_detection/golden_snapshots.json`)을 추가했다.
+- golden fixture 품질 게이트 결과 파일(`fixtures/controller_detection/quality_gate_report.json`)을 추가하고 `quality_high=PASS` 기준을 반영했다.
 
 ## 진행 중
 - `validate` 서브커맨드는 아직 TODO 상태이며, 시나리오별 체크 결과를 공식 판정 리포트로 출력하지 못한다.

@@ -16,6 +16,9 @@
 - `INCLUDE_EXCLUDE_RULES.md`: include/exclude 필터 정책
 - `VALIDATION_TEST_SCENARIOS.md`: 검증 범위 고정용 테스트 시나리오 목록
 - `CLI.md`: CLI 인터페이스 범위와 명령어 초안
+- `SPRING_BOOT_CONTROLLER_DETECTION_RULES.md`: Spring Boot Controller/Endpoint 정적 탐지 전용 규칙
+- `EGOVFRAME_CONTROLLER_DETECTION_RULES.md`: 전자정부프레임워크 Controller/Endpoint 정적 탐지 전용 규칙
+- `CONTROLLER_DETECTION_FIXTURE_CASES.md`: Controller/Endpoint 탐지 규칙 검증용 fixture 케이스 목록
 
 ## 문서 운영 원칙
 
