@@ -1,0 +1,24 @@
+{
+  "errors": [],
+  "infos": [
+    {
+      "code": "QR-COMMON-003",
+      "detail": "optional file not found",
+      "level": "INFO",
+      "target": "artifacts/e2e-llm-off/run3/ir_merged.json"
+    },
+    {
+      "code": "QR-COMMON-003",
+      "detail": "optional file not found",
+      "level": "INFO",
+      "target": "artifacts/e2e-llm-off/run3/features.json"
+    }
+  ],
+  "status": "ok",
+  "summary": {
+    "error_count": 0,
+    "info_count": 2,
+    "warning_count": 0
+  },
+  "warnings": []
+}

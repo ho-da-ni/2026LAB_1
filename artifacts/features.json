@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-04-01T00:00:00Z",
+  "repo": {
+    "base": "main",
+    "head": "work",
+    "merge_base": "UNKNOWN"
+  },
+  "features": [
+    {
+      "feature_id": "feat_2e6850e48622a37f",
+      "name": "Order API",
+      "category": "api",
+      "status": "active",
+      "description": "주문 생성/조회 기능",
+      "tags": [
+        "order",
+        "rest"
+      ],
+      "owners": [
+        "team-platform"
+      ],
+      "signals": {
+        "endpoints": [
+          "ep_0f5ab1b677c021ac"
+        ],
+        "jobs": [],
+        "tables": [
+          "order_items",
+          "orders"
+        ]
+      },
+      "evidence": [
+        {
+          "type": "code",
+          "source": {
+            "file": "src/main/java/com/acme/order/OrderController.java",
+            "symbol": "OrderController#create",
+            "line_start": 42,
+            "line_end": 88
+          },
+          "snippet_hash": "sha1:4f7e1e6bc64d0873d391985f69f7f2c5a4a0d4f0",
+          "confidence": "high",
+          "note": "POST /orders 매핑 확인"
+        },
+        {
+          "type": "sql",
+          "source": {
+            "file": "src/main/resources/mapper/order/OrderMapper.xml",
+            "symbol": "OrderMapper.insertOrder",
+            "line_start": 12,
+            "line_end": 38
+          },
+          "snippet_hash": "sha1:9af3cf0fd7515e941f6df47cf5dbcf31a9672af8",
+          "confidence": "medium",
+          "note": "orders/order_items 테이블 쓰기 확인"
+        }
+      ],
+      "needs_review": []
+    },
+    {
+      "feature_id": "feat_56fab7d6ac95de20",
+      "name": "User List",
+      "category": "api",
+      "status": "active",
+      "description": "사용자 목록 조회",
+      "tags": [
+        "egov",
+        "user"
+      ],
+      "owners": [
+        "team-legacy"
+      ],
+      "signals": {
+        "endpoints": [
+          "ep_8a96a6db7e77db48"
+        ],
+        "jobs": [],
+        "tables": [
+          "users"
+        ]
+      },
+      "evidence": [
+        {
+          "type": "code",
+          "source": {
+            "file": "src/main/java/egov/sample/user/UserController.java",
+            "symbol": "UserController#listUsers",
+            "line_start": 31,
+            "line_end": 54
+          },
+          "snippet_hash": "sha1:21fec4f5008d6cef9263e886c46277ea4d6f9043",
+          "confidence": "high",
+          "note": "GET /user/list.do 매핑 확인"
+        }
+      ],
+      "needs_review": []
+    }
+  ]
+}

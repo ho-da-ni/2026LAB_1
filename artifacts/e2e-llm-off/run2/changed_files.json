@@ -1,0 +1,43 @@
+{
+  "files": [
+    {
+      "evidence": {
+        "blob_after": "UNKNOWN",
+        "blob_before": "UNKNOWN",
+        "diff_header": "M\tsrc/lab/cli.py"
+      },
+      "hunks": "UNKNOWN",
+      "is_binary": "UNKNOWN",
+      "language": "UNKNOWN",
+      "lines_added": "UNKNOWN",
+      "lines_deleted": "UNKNOWN",
+      "old_path": "UNKNOWN",
+      "path": "src/lab/cli.py",
+      "status": "M"
+    }
+  ],
+  "filters": {
+    "exclude_paths": [],
+    "include_paths": []
+  },
+  "generated_at_utc": "2026-04-01T01:27:04Z",
+  "integrity": {
+    "fingerprint": "2ba230f88cf1be53fc4ebf6f0a0b2077a0ca3515898ffe319b0d5bd2946ae6ee",
+    "fingerprint_policy_version": "1.0.0"
+  },
+  "needs_review": [],
+  "repo": {
+    "base": "HEAD~1",
+    "head": "HEAD",
+    "merge_base": "175da5e73debf66e52f82cbcf053f72acea536f3",
+    "vcs": "git"
+  },
+  "schema_version": "1.0.0",
+  "summary": {
+    "added": 0,
+    "deleted": 0,
+    "modified": 1,
+    "renamed": 0,
+    "total_files": 1
+  }
+}
