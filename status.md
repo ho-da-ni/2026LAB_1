@@ -53,6 +53,8 @@
   + `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /tmp/lab-tests/rerun/S08_run2.json`
   + `sha256sum /tmp/lab-tests/rerun/S08_run1.json /tmp/lab-tests/rerun/S08_run2.json` → 성공(S08), 해시 동일.
 
+- `LLM_MODE=off PYTHONPATH=src python -m lab analyze --repo . --output-dir artifacts/e2e-llm-off/run1` + `LLM_MODE=off PYTHONPATH=src python -m lab diff --repo . --base HEAD~1 --head HEAD --output artifacts/e2e-llm-off/run1/changed_files.json` + `LLM_MODE=off PYTHONPATH=src python -m lab validate` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api` → 부분 성공(E2E-LLM-OFF). analyze/diff 산출물 생성 성공, validate/generate는 현재 TODO 메시지로 미구현 확인.
+
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload에 유지하되 fingerprint 계산에서는 제외한다.
 - 결정: S06은 운영 경로 오염 없이 검증하기 위해 숨김 테스트 훅을 허용한다.

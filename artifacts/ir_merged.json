@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-04-01T00:00:00Z",
+  "repo": {
+    "base": "main",
+    "head": "work",
+    "merge_base": "UNKNOWN"
+  },
+  "endpoints": [
+    {
+      "endpoint_id": "ep_0f5ab1b677c021ac",
+      "handler": {
+        "signature": "com.acme.order.OrderController#create(OrderCreateRequest)",
+        "framework": "spring-boot"
+      },
+      "method": "POST",
+      "path": "/orders",
+      "paths": [
+        "/orders"
+      ],
+      "methods": [
+        "POST"
+      ],
+      "produces": [
+        "application/json"
+      ],
+      "consumes": [
+        "application/json"
+      ],
+      "source_evidence": [
+        {
+          "file": "src/main/java/com/acme/order/OrderController.java",
+          "symbol": "OrderController#create",
+          "line_start": 42,
+          "line_end": 88,
+          "annotation": "@PostMapping(path=\"/orders\")"
+        }
+      ],
+      "needs_review": []
+    },
+    {
+      "endpoint_id": "ep_8a96a6db7e77db48",
+      "handler": {
+        "signature": "egov.sample.user.UserController#listUsers(HttpServletRequest)",
+        "framework": "egovframe"
+      },
+      "method": "GET",
+      "path": "/user/list.do",
+      "paths": [
+        "/user/list.do"
+      ],
+      "methods": [
+        "GET"
+      ],
+      "produces": [],
+      "consumes": [],
+      "source_evidence": [
+        {
+          "file": "src/main/java/egov/sample/user/UserController.java",
+          "symbol": "UserController#listUsers",
+          "line_start": 31,
+          "line_end": 54,
+          "annotation": "@RequestMapping(value=\"/user/list.do\", method=RequestMethod.GET)"
+        }
+      ],
+      "needs_review": []
+    }
+  ],
+  "needs_review": [
+    {
+      "code": "needs_review.mapping_route_conflict",
+      "method": "GET",
+      "path": "/orders/{id}",
+      "handlers": [
+        "com.acme.order.OrderController#getById(Long)",
+        "com.acme.legacy.LegacyOrderController#find(String)"
+      ],
+      "detail": "동일 METHOD+PATH에 handler 2개가 충돌하여 자동 병합 중단"
+    }
+  ]
+}
