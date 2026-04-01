@@ -1,0 +1,97 @@
+{
+  "analysis_scope": {
+    "exclude_paths": [
+      ".git/",
+      "build/",
+      "target/"
+    ],
+    "file_count": "UNKNOWN",
+    "include_paths": [],
+    "language_set": [],
+    "module_count": "UNKNOWN"
+  },
+  "created_at_utc": "2026-04-01T01:51:36.837022Z",
+  "execution": {
+    "argv": [
+      "analyze",
+      "--repo",
+      ".",
+      "--output-dir",
+      "artifacts/e2e-llm-off/run3"
+    ],
+    "command": "lab analyze",
+    "duration_ms": 0,
+    "end_time_utc": "2026-04-01T01:51:36.825876Z",
+    "exit_code": 0,
+    "exit_code_policy_version": "1.0.0",
+    "start_time_utc": "2026-04-01T01:51:36.825847Z",
+    "timezone": "UTC"
+  },
+  "inputs": {
+    "config": {
+      "hash_sha256": "UNKNOWN",
+      "path": "UNKNOWN",
+      "profile": "UNKNOWN"
+    },
+    "db_metadata": {
+      "collected_at_utc": "UNKNOWN",
+      "snapshot_id": "UNKNOWN",
+      "source_path": "UNKNOWN",
+      "source_type": "UNKNOWN"
+    },
+    "repo": {
+      "branch": "work",
+      "commit": "d22ca0db86bff161ed8d17e698a9720fa5765e60",
+      "diff_base": "UNKNOWN",
+      "diff_target": "HEAD",
+      "dirty": "true",
+      "vcs": "git"
+    }
+  },
+  "integrity": {
+    "determinism_key": "UNKNOWN",
+    "fingerprint_policy": {
+      "algorithm": "sha256",
+      "exclude": [],
+      "include": [],
+      "normalization": "stable_json_canonicalization",
+      "path_normalization_version": "1.0.0"
+    },
+    "input_fingerprint": "UNKNOWN",
+    "output_fingerprint": "UNKNOWN"
+  },
+  "needs_review": [],
+  "notes": [
+    "UNKNOWN"
+  ],
+  "outputs": {
+    "api_md_path": "UNKNOWN",
+    "artifact_dir": "artifacts/e2e-llm-off/run3",
+    "changed_files_path": "UNKNOWN",
+    "db_schema_md_path": "UNKNOWN",
+    "fingerprint": "UNKNOWN",
+    "ir_path": "UNKNOWN",
+    "spec_md_path": "UNKNOWN"
+  },
+  "quality_checks": {
+    "checks": [],
+    "rubric_version": "1.0.0",
+    "summary": {
+      "failed": "UNKNOWN",
+      "passed": "UNKNOWN",
+      "warnings": "UNKNOWN"
+    },
+    "test_scenario_set_version": "1.0.0"
+  },
+  "run_id": "5f0bd883-9ebb-4811-8e66-4713462fbe45",
+  "schema_version": "1.0.0",
+  "tool": {
+    "name": "lab",
+    "version": "UNKNOWN"
+  },
+  "workspace": {
+    "os": "Linux-6.12.47-x86_64-with-glibc2.39",
+    "python_version": "3.10.19",
+    "root_path": "/workspace/2026LAB_1"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "evidence": {
+        "blob_after": "UNKNOWN",
+        "blob_before": "UNKNOWN",
+        "diff_header": "A\tartifacts/e2e-llm-off/run2/API.md"
+      },
+      "hunks": "UNKNOWN",
+      "is_binary": "UNKNOWN",
+      "language": "UNKNOWN",
+      "lines_added": "UNKNOWN",
+      "lines_deleted": "UNKNOWN",
+      "old_path": "UNKNOWN",
+      "path": "artifacts/e2e-llm-off/run2/API.md",
+      "status": "A"
+    },
+    {
+      "evidence": {
+        "blob_after": "UNKNOWN",
+        "blob_before": "UNKNOWN",
+        "diff_header": "M\tsrc/lab/cli.py"
+      },
+      "hunks": "UNKNOWN",
+      "is_binary": "UNKNOWN",
+      "language": "UNKNOWN",
+      "lines_added": "UNKNOWN",
+      "lines_deleted": "UNKNOWN",
+      "old_path": "UNKNOWN",
+      "path": "src/lab/cli.py",
+      "status": "M"
+    }
+  ],
+  "filters": {
+    "exclude_paths": [],
+    "include_paths": []
+  },
+  "generated_at_utc": "2026-04-01T01:49:15Z",
+  "integrity": {
+    "fingerprint": "42b24e97c096eabe4c91d6c0e25704c37633056d8e3e1620d4b50dd2aef2d855",
+    "fingerprint_policy_version": "1.0.0"
+  },
+  "needs_review": [],
+  "repo": {
+    "base": "HEAD~1",
+    "head": "HEAD",
+    "merge_base": "98549da5035a9ddfc4c3961ed90d528adcd3ea7b",
+    "vcs": "git"
+  },
+  "schema_version": "1.0.0",
+  "summary": {
+    "added": 1,
+    "deleted": 0,
+    "modified": 1,
+    "renamed": 0,
+    "total_files": 2
+  }
+}
