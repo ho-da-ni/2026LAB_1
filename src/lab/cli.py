@@ -315,6 +315,93 @@ def _handle_diff(args: argparse.Namespace) -> int:
     return 0
 
 
+def _load_json_file(path: Path) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        with path.open("r", encoding="utf-8") as fp:
+            payload = json.load(fp)
+    except OSError as exc:
+        return None, f"failed to read {path}: {exc}"
+    except json.JSONDecodeError as exc:
+        return None, f"invalid json in {path}: {exc}"
+    if not isinstance(payload, dict):
+        return None, f"invalid json root type in {path}: expected object"
+    return payload, None
+
+
+def _handle_validate(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir)
+    required_files = ["run_context.json", "changed_files.json"]
+    optional_files = ["ir_merged.json", "features.json"]
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not run_dir.exists() or not run_dir.is_dir():
+        print(f"[ERROR] run directory not found: {run_dir}", file=sys.stderr)
+        return 4
+
+    loaded_payloads: dict[str, dict[str, Any]] = {}
+
+    for filename in required_files:
+        path = run_dir / filename
+        if not path.exists():
+            errors.append(f"missing required file: {path}")
+            continue
+        payload, error = _load_json_file(path)
+        if error:
+            errors.append(error)
+            continue
+        if payload is not None:
+            loaded_payloads[filename] = payload
+
+    for filename in optional_files:
+        path = run_dir / filename
+        if path.exists():
+            payload, error = _load_json_file(path)
+            if error:
+                errors.append(error)
+            elif payload is not None:
+                loaded_payloads[filename] = payload
+        else:
+            warnings.append(f"optional file not found: {path}")
+
+    run_context = loaded_payloads.get("run_context.json", {})
+    if run_context and "schema_version" not in run_context:
+        errors.append("run_context.json missing required key: schema_version")
+    if run_context and "execution" not in run_context:
+        errors.append("run_context.json missing required key: execution")
+
+    changed_files = loaded_payloads.get("changed_files.json", {})
+    if changed_files:
+        files = changed_files.get("files")
+        summary = changed_files.get("summary")
+        if not isinstance(files, list):
+            errors.append("changed_files.json invalid key type: files must be array")
+        if not isinstance(summary, dict):
+            errors.append("changed_files.json invalid key type: summary must be object")
+        if isinstance(files, list) and isinstance(summary, dict):
+            total_files = summary.get("total_files")
+            if isinstance(total_files, int) and total_files != len(files):
+                errors.append("changed_files.json integrity mismatch: summary.total_files != len(files)")
+
+    for message in warnings:
+        print(f"[WARN] {message}")
+    for message in errors:
+        print(f"[ERROR] {message}", file=sys.stderr)
+
+    if errors:
+        return 4
+    if args.strict and warnings:
+        print("[ERROR] strict mode enabled and warnings detected", file=sys.stderr)
+        return 4
+
+    print(
+        "[OK] validation passed "
+        f"(required={len(required_files)}, optional_present={len(loaded_payloads) - len(required_files)}, warnings={len(warnings)})"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="lab", description="LAB CLI")
     subparsers = parser.add_subparsers(dest="command", metavar="COMMAND")
@@ -338,7 +425,9 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--exclude", action="append", help="Exclude path/glob pattern")
     diff_parser.add_argument("--test-hook-force-integrity-mismatch", action="store_true", help=argparse.SUPPRESS)
 
-    subparsers.add_parser("validate", help="Validate generated artifacts")
+    validate_parser = subparsers.add_parser("validate", help="Validate generated artifacts")
+    validate_parser.add_argument("--run-dir", required=True, help="Directory containing generated artifacts")
+    validate_parser.add_argument("--strict", action="store_true", help="Treat warnings as errors")
 
     return parser
 
@@ -359,6 +448,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _handle_analyze(args)
     if args.command == "diff":
         return _handle_diff(args)
+    if args.command == "validate":
+        return _handle_validate(args)
 
     # Command implementations will be added in subsequent milestones.
     print(f"[TODO] '{args.command}' command is not implemented yet.")

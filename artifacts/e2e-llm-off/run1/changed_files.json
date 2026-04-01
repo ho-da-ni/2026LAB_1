@@ -1,0 +1,58 @@
+{
+  "files": [
+    {
+      "evidence": {
+        "blob_after": "UNKNOWN",
+        "blob_before": "UNKNOWN",
+        "diff_header": "M\tdocs/README.md"
+      },
+      "hunks": "UNKNOWN",
+      "is_binary": "UNKNOWN",
+      "language": "UNKNOWN",
+      "lines_added": "UNKNOWN",
+      "lines_deleted": "UNKNOWN",
+      "old_path": "UNKNOWN",
+      "path": "docs/README.md",
+      "status": "M"
+    },
+    {
+      "evidence": {
+        "blob_after": "UNKNOWN",
+        "blob_before": "UNKNOWN",
+        "diff_header": "A\tdocs/REPRODUCIBILITY_VERIFICATION.md"
+      },
+      "hunks": "UNKNOWN",
+      "is_binary": "UNKNOWN",
+      "language": "UNKNOWN",
+      "lines_added": "UNKNOWN",
+      "lines_deleted": "UNKNOWN",
+      "old_path": "UNKNOWN",
+      "path": "docs/REPRODUCIBILITY_VERIFICATION.md",
+      "status": "A"
+    }
+  ],
+  "filters": {
+    "exclude_paths": [],
+    "include_paths": []
+  },
+  "generated_at_utc": "2026-04-01T01:17:02Z",
+  "integrity": {
+    "fingerprint": "804e5334fefb33976ab65aa144bc7741ae71b0d8ba5d72bbd7d538059c19da0b",
+    "fingerprint_policy_version": "1.0.0"
+  },
+  "needs_review": [],
+  "repo": {
+    "base": "HEAD~1",
+    "head": "HEAD",
+    "merge_base": "fc26dc2f9d7312b314258dacf240aab303ceef5c",
+    "vcs": "git"
+  },
+  "schema_version": "1.0.0",
+  "summary": {
+    "added": 1,
+    "deleted": 0,
+    "modified": 1,
+    "renamed": 0,
+    "total_files": 2
+  }
+}
