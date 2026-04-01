@@ -70,6 +70,80 @@
       "quality_gate_high": "PASS"
     },
     {
+      "case_id": "M001",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/ping",
+          "handler": "com.example.HealthController#ping()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "M002",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/items",
+          "handler": "com.example.ItemController#listItems()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        },
+        {
+          "method": "POST",
+          "path": "/api/items",
+          "handler": "com.example.ItemController#listItems()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "C003",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "handler": "com.example.HealthController#health()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        },
+        {
+          "method": "GET",
+          "path": "/api/health",
+          "handler": "com.example.HealthController#health()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
+      "case_id": "C004",
+      "framework": "spring_boot",
+      "expected_endpoints": [
+        {
+          "method": "GET",
+          "path": "/api/users",
+          "handler": "com.example.UserController#getUsersNormalized()",
+          "endpoint_type": "api",
+          "confidence": "confirmed"
+        }
+      ],
+      "expected_needs_review": [],
+      "quality_gate_high": "PASS"
+    },
+    {
       "case_id": "M004",
       "framework": "spring_boot",
       "expected_endpoints": [],

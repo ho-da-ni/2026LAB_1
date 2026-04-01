@@ -31,6 +31,84 @@
       }
     },
     {
+      "case_id": "M001",
+      "canonical_source": "v1|GET|/api/ping|com.example.HealthController#ping()|-",
+      "endpoint_id": "ep_d243729a83105c58",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/api/ping",
+        "handler": "com.example.HealthController#ping()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "M002",
+      "canonical_source": "v1|GET|/api/items|com.example.ItemController#listItems()|-",
+      "endpoint_id": "ep_54b3c7bc9526276d",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/api/items",
+        "handler": "com.example.ItemController#listItems()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "M002",
+      "canonical_source": "v1|POST|/api/items|com.example.ItemController#listItems()|-",
+      "endpoint_id": "ep_4ab768e2f5baa346",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "POST",
+        "path": "/api/items",
+        "handler": "com.example.ItemController#listItems()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "C003",
+      "canonical_source": "v1|GET|/health|com.example.HealthController#health()|-",
+      "endpoint_id": "ep_66740af32bb17cfe",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/health",
+        "handler": "com.example.HealthController#health()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "C003",
+      "canonical_source": "v1|GET|/api/health|com.example.HealthController#health()|-",
+      "endpoint_id": "ep_3ca31125967264ea",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/api/health",
+        "handler": "com.example.HealthController#health()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "case_id": "C004",
+      "canonical_source": "v1|GET|/api/users|com.example.UserController#getUsersNormalized()|-",
+      "endpoint_id": "ep_52144ba9ac224c4b",
+      "quality_gate_high": "PASS",
+      "snapshot": {
+        "method": "GET",
+        "path": "/api/users",
+        "handler": "com.example.UserController#getUsersNormalized()",
+        "condition_fingerprint": "-",
+        "confidence": "confirmed"
+      }
+    },
+    {
       "case_id": "E001",
       "canonical_source": "v1|UNKNOWN|/usr/selectUserList.do|egovframework.usr.web.UserController#selectUserList(UserVO,ModelMap)|-",
       "endpoint_id": "ep_6a979d6b182b5aba",

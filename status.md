@@ -4,6 +4,27 @@
 - `lab diff`의 검증 시나리오(S01~S08)를 문서 기준에 맞게 안정적으로 재현하고, 남은 과제는 `lab validate` 자동 판정기 구현으로 좁힌다.
 
 ## 완료됨
+- W5-T01/W5-T02/W5-T03/W5-T04/W5-T05 대응: 중간공유 패키지 디렉터리(`share_pack_mid/README.md`)와 `RUNBOOK.md`, `LIMITS.md` 초안을 추가했다.
+- 3-command 데모 시나리오(`detect-endpoints -> build-w4 -> generate api`)를 고정하고, 리허설 체크리스트/장애 대응 절차를 문서화했다.
+- 리허설 검증: 동일 입력 고정 상태에서 `generate api` 2회 재실행 시 `API.md` 해시 동일을 확인했다.
+- W4-T05/W4-T06 대응: `generate api`를 보강해 feature 연계(`--features`), wildcard/UNKNOWN `needs_review` 반영, 고정 섹션/테이블 구조를 유지하도록 개선했다.
+- W4-T08 대응: `generate spec`를 구현해 변경 중심 구조(Overview/Metadata/Diff Summary/Feature Changes/Validation Plan/needs_review)를 실제 생성하도록 연결했다.
+- W4-T09 대응: `validate`에 W4 품질 규칙(`QR-IR-002/003/004`, `QR-API-001/002/004`, `QR-SPEC-001`)을 반영하고 strict/non-strict 차이를 자동 검증했다.
+- LLM OFF E2E(정상 케이스 + 경고 케이스) 실행을 완료해 API/SPEC/QUALITY_CHECK 생성 및 strict 정책 차이를 확인했다.
+- W4-T01/W4-T03 대응: `build-w4` 명령을 추가해 `endpoints.json` 입력으로 `ir_merged.json`/`features.json`을 실제 생성하도록 구현했다.
+- W4 산출물 규칙(중복 제거/정렬/evidence/feature_id 결정론)을 CLI 로직으로 연결하고 pytest(`tests/test_w4_artifacts.py`)를 추가했다.
+- W3-T09(확장) 대응: fixture 부족분 4개(`M001`, `M002`, `C003`, `C004`)를 추가해 총 10개 케이스를 충족했다.
+- 신규 4개 케이스에 대한 golden snapshot을 추가하고 `quality_gate_report.json`의 case 집계/평가 목록을 10개 기준으로 갱신했다.
+- W3 품질 게이트 테스트를 보강해 신규 4개 케이스가 자동 검증 대상에 포함되는지 확인하도록 업데이트했다.
+- W3-T09 대응: fixture 기대값 비교 + golden snapshot 비교 + quality high gate 판정 로직(`evaluate_quality_high_gate`)을 추가해 자동 검증을 고정했다.
+- W3 fixture 입력 2회 실행 동일성(결정론성) 검증을 테스트로 추가했다.
+- fixture 케이스 목표(10) 대비 현재(6) 부족분(4)을 quality gate 리포트에 자동 계산하도록 반영했다.
+- W3-T01/W3-T02/W3-T03/W3-T04/W3-T07 대응: fixture 기반 Java endpoint MVP(`detect-endpoints`)를 추가해 `endpoints.json`을 실제 생성하도록 구현했다.
+- controller detection 모듈(`src/lab/controller_detection.py`)을 추가해 fixture case 기반 endpoint 추출, source evidence 기록, `endpoint_id` 결정론(`ep_` + sha1 16자리)을 코드로 고정했다.
+- W3 pytest(`tests/test_w3_controller_detection.py`)를 추가해 endpoint_id 결정론, 최소 fixture 입력 추출, CLI 산출물 생성을 자동 검증했다.
+- W2-T01/W2-T02 대응: `lab analyze` 실행 시 `repo_meta.json`과 `scan_index.json`을 실제 생성하도록 구현했다.
+- W2-T03 대응: `changed_files.json`의 `files` 배열을 안정 정렬(path/status/old_path)로 고정해 출력 순서 결정론성을 강화했다.
+- W2-T04/W2-T06/W2-T08 대응: W2 산출물/실패 계약 검증용 pytest(`tests/test_w2_artifacts.py`)를 추가해 정상/실패/예외 시나리오를 자동화했다.
 - `src/lab/`에 CLI 엔트리포인트(`python -m lab`)와 `analyze`/`diff` 기본 동작을 구현했다.
 - `lab diff`가 `changed_files.json`을 생성하고, ref 해석 실패 시 `exit_code=3`, 출력 실패 시 `exit_code=5`, 무결성 불일치 시 `exit_code=7`을 반환하도록 구현했다.
 - include/exclude 패턴 정규화(`_normalize_match_pattern`)를 추가해 S07 경로 패턴 케이스를 통과시켰다.
@@ -45,6 +66,16 @@
 4. STATUS.md 검증 명령 섹션을 세션 단위로 누적 관리할 수 있게 간소화 규칙 정리.
 
 ## 검증 명령 및 결과
+- `LLM_MODE=off PYTHONPATH=src python -m lab detect-endpoints --input fixtures/controller_detection/endpoints.fixture.json --case-id C001 --output /tmp/lab-mid-demo/endpoints.json` + `LLM_MODE=off PYTHONPATH=src python -m lab build-w4 --endpoints-input /tmp/lab-mid-demo/endpoints.json --output-dir /tmp/lab-mid-demo --base main --head work --merge-base UNKNOWN` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api --input /tmp/lab-mid-demo/ir_merged.json --features /tmp/lab-mid-demo/features.json --output /tmp/lab-mid-demo/API.md` → 성공(W5 3-command 데모).
+- `sha256sum /tmp/lab-mid-demo/API.md` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api --input /tmp/lab-mid-demo/ir_merged.json --features /tmp/lab-mid-demo/features.json --output /tmp/lab-mid-demo/API.md` + `sha256sum /tmp/lab-mid-demo/API.md` → 성공(W5 리허설 재현성), 해시 동일 확인.
+- `PYTHONPATH=src pytest -q` → 성공(16 passed), W4 API/SPEC/QUALITY_CHECK + 재현성 테스트 포함 전체 통과.
+- `LLM_MODE=off PYTHONPATH=src python -m lab detect-endpoints --input fixtures/controller_detection/endpoints.fixture.json --case-id C001 --output /tmp/lab-w4-e2e/endpoints.json` + `LLM_MODE=off PYTHONPATH=src python -m lab build-w4 --endpoints-input /tmp/lab-w4-e2e/endpoints.json --output-dir /tmp/lab-w4-e2e --base main --head work --merge-base UNKNOWN` + `LLM_MODE=off PYTHONPATH=src python -m lab diff --repo . --base HEAD~1 --head HEAD --output /tmp/lab-w4-e2e/changed_files.json` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api --input /tmp/lab-w4-e2e/ir_merged.json --features /tmp/lab-w4-e2e/features.json --output /tmp/lab-w4-e2e/API.md` + `LLM_MODE=off PYTHONPATH=src python -m lab generate spec --changed-files /tmp/lab-w4-e2e/changed_files.json --features /tmp/lab-w4-e2e/features.json --ir /tmp/lab-w4-e2e/ir_merged.json --output /tmp/lab-w4-e2e/SPEC.md` + `LLM_MODE=off PYTHONPATH=src python -m lab analyze --repo . --output-dir /tmp/lab-w4-e2e` + `LLM_MODE=off PYTHONPATH=src python -m lab validate --run-dir /tmp/lab-w4-e2e` + `LLM_MODE=off PYTHONPATH=src python -m lab validate --run-dir /tmp/lab-w4-e2e --strict` → 성공, non-strict/strict 모두 `exit_code=0` (경고 없음).
+- `LLM_MODE=off PYTHONPATH=src python -m lab detect-endpoints --input fixtures/controller_detection/endpoints.fixture.json --case-id E001 --output /tmp/lab-w4-e2e-warn/endpoints.json` + `LLM_MODE=off PYTHONPATH=src python -m lab build-w4 --endpoints-input /tmp/lab-w4-e2e-warn/endpoints.json --output-dir /tmp/lab-w4-e2e-warn --base main --head work --merge-base UNKNOWN` + `LLM_MODE=off PYTHONPATH=src python -m lab diff --repo . --base HEAD~1 --head HEAD --output /tmp/lab-w4-e2e-warn/changed_files.json` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api --input /tmp/lab-w4-e2e-warn/ir_merged.json --features /tmp/lab-w4-e2e-warn/features.json --output /tmp/lab-w4-e2e-warn/API.md` + `LLM_MODE=off PYTHONPATH=src python -m lab generate spec --changed-files /tmp/lab-w4-e2e-warn/changed_files.json --features /tmp/lab-w4-e2e-warn/features.json --ir /tmp/lab-w4-e2e-warn/ir_merged.json --output /tmp/lab-w4-e2e-warn/SPEC.md` + `LLM_MODE=off PYTHONPATH=src python -m lab analyze --repo . --output-dir /tmp/lab-w4-e2e-warn` + `LLM_MODE=off PYTHONPATH=src python -m lab validate --run-dir /tmp/lab-w4-e2e-warn` + `LLM_MODE=off PYTHONPATH=src python -m lab validate --run-dir /tmp/lab-w4-e2e-warn --strict` → 의도대로 차이 확인: non-strict `exit_code=0`, strict `exit_code=4` (`QR-IR-002` 경고를 strict에서 실패 처리).
+- `PYTHONPATH=src pytest -q` → 성공(13 passed), W4 ir_merged/features 생성 테스트 포함 전체 통과.
+- `PYTHONPATH=src pytest -q` → 성공(11 passed), 10개 fixture + golden/quality gate 자동 검증 통과.
+- `PYTHONPATH=src pytest -q` → 성공(10 passed), W3-T09 fixture/golden/quality gate 자동 검증 통과.
+- `PYTHONPATH=src pytest -q` → 성공(7 passed), W2/W3 자동화 테스트 통과.
+- `PYTHONPATH=src pytest -q` → 성공(4 passed), W2 산출물 생성/실패 코드 검증 자동화 확인.
 - `PYTHONPATH=src python -m lab --help` → 성공, CLI 진입점 확인.
 - `PYTHONPATH=src python -m lab diff --repo . --base main --head HEAD --output /tmp/lab-tests/rerun/S01_changed_files.json` → 성공(S01).
 - `PYTHONPATH=src python -m lab diff --repo /tmp/lab-s02-repo-rerun --base main --head feature/test-diff --output /tmp/lab-tests/rerun/S02_changed_files.json` → 성공(S02), `summary.total_files=0`, `needs_review.default_excludes_applied=pass` 확인.
