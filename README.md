@@ -124,3 +124,30 @@ include/exclude 기본 제외 경로(`.git/`, `build/`, `target/`) 정책은 `do
   - 결정사항 / 리스크
 - 검증 실패, 범위 변경, 중요한 설계 결정이 생기면 즉시 `STATUS.md`에 반영한다.
 - 세션 종료 전 반드시 `STATUS.md`를 최신 상태로 정리하고, 다음 세션 시작 프롬프트를 1~3줄로 남긴다.
+
+## 설치 및 CLI 실행
+
+프로젝트 수준에서 `lab` 명령을 직접 사용하려면 editable install을 사용한다.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . --no-build-isolation
+lab --help
+```
+
+개발/디버깅 시에는 기존처럼 모듈 실행도 가능하다.
+
+```bash
+PYTHONPATH=src python -m lab --help
+```
+
+
+### 프록시/오프라인 환경 설치 팁
+
+- 사내 프록시로 인해 build isolation 단계에서 패키지 다운로드가 막히면 `--no-build-isolation`을 사용한다.
+- 필요한 경우 사내 PyPI 미러를 지정한다.
+
+```bash
+pip config set global.index-url https://<your-internal-pypi>/simple
+```

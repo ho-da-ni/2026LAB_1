@@ -24,6 +24,12 @@
 - golden fixture 품질 게이트 결과 파일(`fixtures/controller_detection/quality_gate_report.json`)을 추가하고 `quality_high=PASS` 기준을 반영했다.
 - endpoint fixture JSON 포맷을 정리하고(`quality_gate_high` 포함), golden snapshot/quality gate와의 정합성을 확인했다.
 
+- `pyproject.toml`을 추가해 `pip install -e .` 설치 경로와 console script(`lab=lab.cli:main`)를 프로젝트에 고정했다.
+- README/CLI 문서에 프로젝트 레벨 설치 절차(venv + editable install)를 추가했다.
+
+- build-system의 setuptools 버전 하한(`>=68`)을 제거해 `--no-build-isolation` 설치 시 로컬 setuptools를 재사용할 수 있게 조정했다.
+- README/CLI 문서의 설치 기본 예시를 `pip install -e . --no-build-isolation`으로 변경하고 프록시 환경 대응 팁을 추가했다.
+
 ## 진행 중
 - `validate` 서브커맨드는 아직 TODO 상태이며, 시나리오별 체크 결과를 공식 판정 리포트로 출력하지 못한다.
 - S02/S06은 현재 diff 실행 + 보조 검증(임시 repo/테스트 훅) 방식으로 확인하고 있으며, CI용 일괄 자동 판정 스크립트는 미구현이다.

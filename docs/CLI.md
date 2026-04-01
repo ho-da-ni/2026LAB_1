@@ -5,6 +5,19 @@
 LAB의 사용자 인터페이스는 **CLI 기준으로 고정**한다.
 즉, 1차 범위에서는 웹 UI나 운영 서비스가 아니라, 재현 가능한 입력과 옵션을 받아 결정론적인 산출물을 생성하는 커맨드라인 도구로 설계한다.
 
+## 설치 (프로젝트 레벨)
+
+`lab` 명령을 셸에서 직접 사용하려면 프로젝트 루트에서 아래처럼 설치한다.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e . --no-build-isolation
+lab --help
+```
+
+프록시/오프라인 환경에서는 `pip install -e . --no-build-isolation`을 우선 사용한다.
+
 ## 설계 원칙
 
 - 모든 명령은 재현 가능한 입력 경로와 옵션을 받아야 한다.
