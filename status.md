@@ -56,6 +56,8 @@
 - W5 3-command 데모 재실행 시 `API.md` 해시 동일 확인.
 - LLM OFF full E2E(run3)에서 analyze → diff → generate api → validate → validate --strict 전 단계 성공.
 
+- `LLM_MODE=off PYTHONPATH=src python -m lab analyze --repo . --output-dir artifacts/e2e-llm-off/run1` + `LLM_MODE=off PYTHONPATH=src python -m lab diff --repo . --base HEAD~1 --head HEAD --output artifacts/e2e-llm-off/run1/changed_files.json` + `LLM_MODE=off PYTHONPATH=src python -m lab validate` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api` → 부분 성공(E2E-LLM-OFF). analyze/diff 산출물 생성 성공, validate/generate는 현재 TODO 메시지로 미구현 확인.
+
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload 유지, fingerprint 계산에서는 제외.
 - 결정: S06 검증용 hidden test hook 유지(운영 경로 오염 방지).
