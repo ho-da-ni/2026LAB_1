@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from lab.cli_shared import git_value, is_default_excluded, normalize_path, run_git, sha256_file, utc_now_iso
+from lab.shared_utils import git_value, is_default_excluded, normalize_path, run_git, sha256_file, utc_now_iso
 from lab.runtime.fingerprint import stable_sha256
 
 

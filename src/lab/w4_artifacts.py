@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from typing import Any
 
-from lab.cli_shared import utc_now_iso
+from lab.shared_utils import utc_now_iso
+from lab.runtime.fingerprint import stable_sha256
 
 
 def normalize_endpoint_evidence(evidence: Any) -> list[dict[str, Any]]:
@@ -99,13 +101,24 @@ def build_ir_merged(endpoints_payload: dict[str, Any], repo_base: str, repo_head
             }
         )
 
-    return {
+    payload: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "generated_at": utc_now_iso(),
         "repo": {"base": repo_base, "head": repo_head, "merge_base": repo_merge_base},
         "endpoints": merged_endpoints,
         "needs_review": top_needs_review,
+        "metadata": {"generated_at_utc": utc_now_iso()},
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy_version": "1.0.0",
+            "exclude": ["metadata.generated_at_utc"],
+        },
     }
+    fingerprint_payload = copy.deepcopy(payload)
+    metadata = fingerprint_payload.get("metadata", {})
+    if isinstance(metadata, dict):
+        metadata.pop("generated_at_utc", None)
+    payload["integrity"]["fingerprint"] = stable_sha256(fingerprint_payload)
+    return payload
 
 
 def build_feature_id(category: str, name: str, endpoint_ids: list[str], tables: list[str], tags: list[str]) -> str:
@@ -181,9 +194,20 @@ def build_features(ir_merged_payload: dict[str, Any]) -> dict[str, Any]:
         features.append(feature)
 
     features = sorted(features, key=lambda item: (str(item["category"]), str(item["name"]), str(item["feature_id"])))
-    return {
+    payload: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "generated_at": utc_now_iso(),
         "repo": ir_merged_payload.get("repo", {"base": "UNKNOWN", "head": "UNKNOWN", "merge_base": "UNKNOWN"}),
         "features": features,
+        "metadata": {"generated_at_utc": utc_now_iso()},
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy_version": "1.0.0",
+            "exclude": ["metadata.generated_at_utc"],
+        },
     }
+    fingerprint_payload = copy.deepcopy(payload)
+    metadata = fingerprint_payload.get("metadata", {})
+    if isinstance(metadata, dict):
+        metadata.pop("generated_at_utc", None)
+    payload["integrity"]["fingerprint"] = stable_sha256(fingerprint_payload)
+    return payload

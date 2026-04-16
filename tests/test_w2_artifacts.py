@@ -40,6 +40,11 @@ def test_w2_analyze_generates_repo_meta_and_scan_index(tmp_path: Path) -> None:
     assert run_context_path.exists()
     assert repo_meta_path.exists()
     assert scan_index_path.exists()
+    run_context = json.loads(run_context_path.read_text(encoding="utf-8"))
+    assert "metadata" in run_context
+    assert "run_id" not in run_context
+    assert isinstance(run_context["integrity"]["output_fingerprint"], str)
+    assert run_context["integrity"]["output_fingerprint"] != "UNKNOWN"
 
     repo_meta = json.loads(repo_meta_path.read_text(encoding="utf-8"))
     assert repo_meta["vcs"] == "git"
@@ -96,4 +101,3 @@ def test_w2_diff_failure_integrity_returns_7(tmp_path: Path) -> None:
     )
     assert rc == 7
     assert not output.exists()
-

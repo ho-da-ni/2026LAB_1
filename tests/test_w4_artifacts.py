@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
 from lab.cli import _build_feature_id, main
+from lab.runtime.fingerprint import stable_sha256
 
 
 def test_w4_build_artifacts_generates_ir_merged_and_features(tmp_path: Path) -> None:
@@ -60,6 +62,12 @@ def test_w4_build_artifacts_generates_ir_merged_and_features(tmp_path: Path) -> 
     assert ir["endpoints"][0]["method"] == "GET"
     assert ir["endpoints"][0]["path"] == "/users"
     assert ir["endpoints"][0]["handler"]["signature"] == "com.example.UserController#getUsers()"
+    assert "metadata" in ir
+    assert isinstance(ir["integrity"]["fingerprint"], str)
+    canonical_ir = copy.deepcopy(ir)
+    canonical_ir["metadata"].pop("generated_at_utc", None)
+    canonical_ir["integrity"]["fingerprint"] = "UNKNOWN"
+    assert ir["integrity"]["fingerprint"] == stable_sha256(canonical_ir)
 
     features = json.loads(feat_path.read_text(encoding="utf-8"))
     assert len(features["features"]) == 1
@@ -67,10 +75,14 @@ def test_w4_build_artifacts_generates_ir_merged_and_features(tmp_path: Path) -> 
     assert first["signals"]["endpoints"] == ["ep_1111111111111111"]
     assert len(first["evidence"]) == 1
     assert first["feature_id"].startswith("feat_")
+    assert "metadata" in features
+    canonical_features = copy.deepcopy(features)
+    canonical_features["metadata"].pop("generated_at_utc", None)
+    canonical_features["integrity"]["fingerprint"] = "UNKNOWN"
+    assert features["integrity"]["fingerprint"] == stable_sha256(canonical_features)
 
 
 def test_w4_feature_id_is_deterministic() -> None:
     first = _build_feature_id("api", "/users", ["ep_a"], [], ["get"])
     second = _build_feature_id("api", "/users", ["ep_a"], [], ["get"])
     assert first == second
-

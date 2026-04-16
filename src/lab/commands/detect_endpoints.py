@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from lab.cli_shared import atomic_write_json
+from lab.shared_utils import atomic_write_json
 from lab.controller_detection import detect_endpoints_from_fixture
 
 

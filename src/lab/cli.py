@@ -6,8 +6,12 @@ import argparse
 from typing import Sequence
 
 from lab.commands import analyze, build_w4, detect_endpoints, diff, generate_api, generate_db_schema, generate_spec, validate
-from lab.git.changed_files import build_changed_files as _build_changed_files
-from lab.cli_w4 import build_feature_id as _build_feature_id
+from lab.git.changed_files import build_changed_files
+from lab.w4_artifacts import build_feature_id
+
+# Backward-compatible re-exports used by tests and external callers.
+_build_changed_files = build_changed_files
+_build_feature_id = build_feature_id
 
 
 def build_parser() -> argparse.ArgumentParser:

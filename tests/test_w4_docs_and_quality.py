@@ -140,3 +140,56 @@ def test_w4_generate_api_is_deterministic_for_same_input(tmp_path: Path) -> None
     h1 = hashlib.sha256(out1.read_bytes()).hexdigest()
     h2 = hashlib.sha256(out2.read_bytes()).hexdigest()
     assert h1 == h2
+
+
+def test_w4_generate_spec_is_deterministic_for_same_input(tmp_path: Path) -> None:
+    changed = {
+        "schema_version": "1.0.0",
+        "generated_at_utc": "2026-04-01T00:00:00Z",
+        "repo": {"base": "main", "head": "work", "merge_base": "abc"},
+        "summary": {"total_files": 1, "added": 0, "modified": 1, "deleted": 0, "renamed": 0},
+        "files": [{"path": "src/UserController.java", "status": "M", "language": "java"}],
+        "filters": {"include_paths": [], "exclude_paths": []},
+    }
+    features = {
+        "schema_version": "1.0.0",
+        "repo": {"base": "main", "head": "work", "merge_base": "abc"},
+        "features": [
+            {
+                "feature_id": "feat_1111111111111111",
+                "name": "/users",
+                "category": "api",
+                "signals": {"endpoints": ["ep_demo"], "tables": [], "jobs": []},
+                "evidence": [{"type": "code", "source": {"file": "src/UserController.java", "symbol": "getUsers", "line_start": 1, "line_end": 10}}],
+            }
+        ],
+    }
+    ir = {
+        "schema_version": "1.0.0",
+        "repo": {"base": "main", "head": "work", "merge_base": "abc"},
+        "endpoints": [
+            {
+                "endpoint_id": "ep_demo",
+                "method": "GET",
+                "path": "/users",
+                "handler": {"signature": "com.example.UserController#getUsers()", "framework": "spring_boot"},
+                "source_evidence": [],
+                "needs_review": [],
+            }
+        ],
+    }
+    changed_path = tmp_path / "changed_files.json"
+    features_path = tmp_path / "features.json"
+    ir_path = tmp_path / "ir_merged.json"
+    out1 = tmp_path / "SPEC1.md"
+    out2 = tmp_path / "SPEC2.md"
+    _write_json(changed_path, changed)
+    _write_json(features_path, features)
+    _write_json(ir_path, ir)
+    assert main(["generate", "spec", "--changed-files", str(changed_path), "--features", str(features_path), "--ir", str(ir_path), "--output", str(out1)]) == 0
+    assert main(["generate", "spec", "--changed-files", str(changed_path), "--features", str(features_path), "--ir", str(ir_path), "--output", str(out2)]) == 0
+    assert hashlib.sha256(out1.read_bytes()).hexdigest() == hashlib.sha256(out2.read_bytes()).hexdigest()
+
+
+def test_w4_generate_db_schema_todo_returns_non_zero() -> None:
+    assert main(["generate", "db-schema"]) == 1

@@ -7,7 +7,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from lab.cli_shared import atomic_write_json
+from lab.shared_utils import atomic_write_json
 from lab.git.repo_meta import build_scan_index, collect_repo_meta
 from lab.runtime.run_context import build_run_context
 

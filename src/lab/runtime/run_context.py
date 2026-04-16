@@ -9,24 +9,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from lab.cli_shared import DEFAULT_EXCLUDES, git_value, utc_now_iso
+from lab.shared_utils import DEFAULT_EXCLUDES, git_value, utc_now_iso
+from lab.runtime.fingerprint import stable_sha256
 
 
 def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: datetime) -> dict[str, Any]:
     command_argv = ["analyze", "--repo", args.repo, "--output-dir", args.output_dir]
     dirty_raw = git_value(args.repo, "status", "--porcelain")
     dirty = "UNKNOWN" if dirty_raw == "UNKNOWN" else ("true" if dirty_raw else "false")
-
-    return {
+    payload: dict[str, Any] = {
         "schema_version": "1.0.0",
-        "run_id": str(uuid.uuid4()),
-        "created_at_utc": utc_now_iso(),
         "tool": {"name": "lab", "version": "UNKNOWN"},
-        "workspace": {
-            "root_path": str(Path.cwd()),
-            "os": platform.platform(),
-            "python_version": platform.python_version(),
-        },
         "inputs": {
             "repo": {
                 "vcs": "git",
@@ -84,10 +77,40 @@ def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: 
                 "algorithm": "sha256",
                 "normalization": "stable_json_canonicalization",
                 "include": [],
-                "exclude": [],
+                "exclude": [
+                    "metadata.run.run_id",
+                    "metadata.run.created_at_utc",
+                    "metadata.workspace",
+                    "execution.start_time_utc",
+                    "execution.end_time_utc",
+                    "execution.duration_ms",
+                ],
                 "path_normalization_version": "1.0.0",
+            },
+        },
+        "metadata": {
+            "run": {
+                "run_id": str(uuid.uuid4()),
+                "created_at_utc": utc_now_iso(),
+            },
+            "workspace": {
+                "root_path": str(Path.cwd()),
+                "os": platform.platform(),
+                "python_version": platform.python_version(),
             },
         },
         "notes": ["UNKNOWN"],
         "needs_review": [],
     }
+    deterministic_payload = dict(payload)
+    deterministic_payload["metadata"] = {"run": {}, "workspace": {}}
+    execution = deterministic_payload.get("execution", {})
+    if isinstance(execution, dict):
+        execution["start_time_utc"] = "EXCLUDED"
+        execution["end_time_utc"] = "EXCLUDED"
+        execution["duration_ms"] = "EXCLUDED"
+    integrity = deterministic_payload.get("integrity", {})
+    if isinstance(integrity, dict):
+        integrity["output_fingerprint"] = "UNKNOWN"
+    payload["integrity"]["output_fingerprint"] = stable_sha256(deterministic_payload)
+    return payload
