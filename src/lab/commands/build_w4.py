@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from lab.cli_shared import atomic_write_json, load_json_file
-from lab.cli_w4 import build_features, build_ir_merged
+from lab.shared_utils import atomic_write_json, load_json_file
+from lab.w4_artifacts import build_features, build_ir_merged
 
 
 def run(args: argparse.Namespace) -> int:

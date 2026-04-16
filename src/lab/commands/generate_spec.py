@@ -6,8 +6,8 @@ import argparse
 import sys
 from pathlib import Path
 
-from lab.cli_markdown import render_spec_markdown
-from lab.cli_shared import load_json_file
+from lab.markdown_renderer import render_spec_markdown
+from lab.shared_utils import load_json_file
 
 
 def run(args: argparse.Namespace) -> int:

@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from lab.cli_shared import atomic_write_json
+from lab.shared_utils import atomic_write_json
 from lab.quality.validate_api import validate_api_markdown, validate_ir_merged
 from lab.quality.validate_common import collect_payloads, validate_changed_files, validate_features, validate_run_context
 from lab.quality.validate_db import validate_db_markdown

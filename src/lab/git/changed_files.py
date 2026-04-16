@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from lab.cli_shared import DEFAULT_EXCLUDES, git_value, is_default_excluded, is_excluded, is_included, normalize_path, run_git, utc_now_iso
+from lab.shared_utils import DEFAULT_EXCLUDES, git_value, is_default_excluded, is_excluded, is_included, normalize_path, run_git, utc_now_iso
 from lab.runtime.fingerprint import stable_sha256
 
 

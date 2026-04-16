@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.cli_shared import utc_now_iso
-
-
 def render_api_markdown(ir_payload: dict[str, Any], features_payload: dict[str, Any] | None = None) -> str:
     schema_version = ir_payload.get("schema_version", "UNKNOWN")
-    generated_at = ir_payload.get("generated_at", "UNKNOWN")
+    metadata = ir_payload.get("metadata", {})
+    generated_at = "UNKNOWN"
+    if isinstance(metadata, dict):
+        generated_at = str(metadata.get("generated_at_utc", "UNKNOWN"))
+    if generated_at == "UNKNOWN":
+        generated_at = str(ir_payload.get("generated_at", "UNKNOWN"))
     repo = ir_payload.get("repo", {})
     base = repo.get("base", "UNKNOWN") if isinstance(repo, dict) else "UNKNOWN"
     head = repo.get("head", "UNKNOWN") if isinstance(repo, dict) else "UNKNOWN"
@@ -177,12 +179,18 @@ def render_spec_markdown(changed_files_payload: dict[str, Any], features_payload
     if isinstance(ir_endpoints, list):
         endpoint_map = {str(ep.get("endpoint_id", "")): ep for ep in ir_endpoints if isinstance(ep, dict)}
 
+    generated_at = str(changed_files_payload.get("generated_at_utc", "UNKNOWN"))
+    if generated_at == "UNKNOWN":
+        ir_metadata = ir_payload.get("metadata", {})
+        if isinstance(ir_metadata, dict):
+            generated_at = str(ir_metadata.get("generated_at_utc", "UNKNOWN"))
+
     lines: list[str] = []
     lines.append("# Change Specification Overview")
     lines.append("- Project: `UNKNOWN`")
     lines.append(f"- Feature Change Count: `{len(features_rows)}`")
     lines.append(f"- Changed Files: `{len(file_rows)}`")
-    lines.append(f"- Generated At: `{utc_now_iso()}`")
+    lines.append(f"- Generated At: `{generated_at}`")
     lines.append("")
     lines.append("## Metadata")
     lines.append("- schema_version: `1.0.0`")

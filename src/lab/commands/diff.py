@@ -6,7 +6,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from lab.cli_shared import GitUnavailableError, atomic_write_json, normalize_match_pattern
+from lab.shared_utils import GitUnavailableError, atomic_write_json, normalize_match_pattern
 from lab.git.changed_files import build_changed_files
 
 

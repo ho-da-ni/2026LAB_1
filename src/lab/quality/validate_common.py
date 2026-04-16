@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from lab.cli_shared import load_json_file
+from lab.shared_utils import load_json_file
 
 
 Finding = dict[str, str]
