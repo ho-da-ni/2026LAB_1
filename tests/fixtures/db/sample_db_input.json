@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "source_type": "snapshot",
+    "source_path": "fixtures/db/sample_db_input.json",
+    "snapshot_id": "snap_fixture_001",
+    "collected_at_utc": "2026-04-01T00:00:00Z"
+  },
+  "tables": [
+    {
+      "table_name": "users",
+      "schema_name": "public",
+      "columns": [
+        {
+          "name": "id",
+          "data_type": "bigint",
+          "nullable": false,
+          "default": "UNKNOWN",
+          "is_primary_key": true,
+          "is_foreign_key": false
+        },
+        {
+          "name": "org_id",
+          "data_type": "bigint",
+          "nullable": false,
+          "default": "UNKNOWN",
+          "is_primary_key": false,
+          "is_foreign_key": true,
+          "references": {
+            "table": "organizations",
+            "column": "id"
+          }
+        }
+      ],
+      "primary_key": {
+        "columns": ["id"]
+      },
+      "foreign_keys": [
+        {
+          "name": "fk_users_org",
+          "column": "org_id",
+          "references_table": "organizations",
+          "references_column": "id",
+          "on_delete": "RESTRICT",
+          "on_update": "CASCADE"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_users_org_id",
+          "unique": false,
+          "columns": ["org_id"]
+        }
+      ],
+      "source_evidence": [
+        {
+          "file": "schema.sql",
+          "symbol": "create table users",
+          "line_start": 10,
+          "line_end": 30
+        }
+      ],
+      "needs_review": []
+    }
+  ]
+}

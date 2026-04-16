@@ -28,6 +28,38 @@ def _normalize_column(raw: Any) -> dict[str, Any]:
     }
 
 
+def _normalize_foreign_key(raw: Any) -> dict[str, Any]:
+    item = raw if isinstance(raw, dict) else {}
+    return {
+        "name": str(item.get("name", "UNKNOWN")),
+        "column": str(item.get("column", "UNKNOWN")),
+        "references_table": str(item.get("references_table", "UNKNOWN")),
+        "references_column": str(item.get("references_column", "UNKNOWN")),
+        "on_delete": str(item.get("on_delete", "UNKNOWN")),
+        "on_update": str(item.get("on_update", "UNKNOWN")),
+    }
+
+
+def _normalize_index(raw: Any) -> dict[str, Any]:
+    item = raw if isinstance(raw, dict) else {}
+    columns = item.get("columns", [])
+    return {
+        "name": str(item.get("name", "UNKNOWN")),
+        "unique": bool(item.get("unique", False)),
+        "columns": sorted(str(column) for column in columns) if isinstance(columns, list) else [],
+    }
+
+
+def _normalize_source_evidence(raw: Any) -> dict[str, Any]:
+    item = raw if isinstance(raw, dict) else {}
+    return {
+        "file": str(item.get("file", "UNKNOWN")),
+        "symbol": str(item.get("symbol", "UNKNOWN")),
+        "line_start": item.get("line_start", "UNKNOWN"),
+        "line_end": item.get("line_end", "UNKNOWN"),
+    }
+
+
 def _normalize_table(raw: Any) -> dict[str, Any]:
     item = raw if isinstance(raw, dict) else {}
     columns_raw = item.get("columns", [])
@@ -40,17 +72,23 @@ def _normalize_table(raw: Any) -> dict[str, Any]:
     primary_key_columns = sorted(str(col) for col in pk_columns) if isinstance(pk_columns, list) else []
 
     fks = item.get("foreign_keys", [])
+    foreign_keys = [_normalize_foreign_key(fk) for fk in fks] if isinstance(fks, list) else []
     foreign_keys = sorted(
-        (fk for fk in fks if isinstance(fk, dict)),
+        foreign_keys,
         key=lambda fk: (str(fk.get("name", "UNKNOWN")), str(fk.get("column", "UNKNOWN"))),
     )
+
     idx = item.get("indexes", [])
-    indexes = sorted((index for index in idx if isinstance(index, dict)), key=lambda index: str(index.get("name", "UNKNOWN")))
+    indexes = [_normalize_index(index) for index in idx] if isinstance(idx, list) else []
+    indexes = sorted(indexes, key=lambda index: str(index.get("name", "UNKNOWN")))
+
     source_evidence = item.get("source_evidence", [])
+    evidence_rows = [_normalize_source_evidence(ev) for ev in source_evidence] if isinstance(source_evidence, list) else []
     evidence_rows = sorted(
-        (ev for ev in source_evidence if isinstance(ev, dict)),
+        evidence_rows,
         key=lambda ev: (str(ev.get("file", "UNKNOWN")), str(ev.get("symbol", "UNKNOWN"))),
     )
+
     needs_review_raw = item.get("needs_review", [])
     needs_review = sorted(str(code) for code in needs_review_raw) if isinstance(needs_review_raw, list) else []
 
@@ -68,6 +106,8 @@ def _normalize_table(raw: Any) -> dict[str, Any]:
         table["needs_review"].append("needs_review.table_name_unknown")
     if not table["columns"] and "needs_review.columns_missing" not in table["needs_review"]:
         table["needs_review"].append("needs_review.columns_missing")
+    if not table["source_evidence"] and "needs_review.source_evidence_missing" not in table["needs_review"]:
+        table["needs_review"].append("needs_review.source_evidence_missing")
     table["needs_review"] = sorted(table["needs_review"])
     return table
 
