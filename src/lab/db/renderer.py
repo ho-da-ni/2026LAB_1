@@ -14,6 +14,14 @@ def render(payload: dict[str, Any]) -> str:
     snapshot_id = str(meta.get("snapshot_id", "UNKNOWN"))
     collected_at = str(meta.get("collected_at_utc", "UNKNOWN"))
 
+    integrity = payload.get("integrity", {})
+    integrity_obj = integrity if isinstance(integrity, dict) else {}
+    fingerprint = str(integrity_obj.get("fingerprint", "UNKNOWN"))
+    policy = integrity_obj.get("fingerprint_policy", {})
+    policy_obj = policy if isinstance(policy, dict) else {}
+    excludes = policy_obj.get("exclude", [])
+    excludes_list = [str(item) for item in excludes] if isinstance(excludes, list) else []
+
     tables_raw = payload.get("tables", [])
     tables = (item for item in tables_raw if isinstance(item, dict)) if isinstance(tables_raw, list) else []
     table_rows = sorted(tables, key=lambda t: (str(t.get("schema_name", "UNKNOWN")), str(t.get("table_name", "UNKNOWN"))))
@@ -31,6 +39,17 @@ def render(payload: dict[str, Any]) -> str:
     lines.append(f"- source_path: `{source_path}`")
     lines.append(f"- snapshot_id: `{snapshot_id}`")
     lines.append(f"- collected_at_utc: `{collected_at}`")
+    lines.append("")
+    lines.append("## Integrity")
+    lines.append(f"- fingerprint: `{fingerprint}`")
+    lines.append(f"- fingerprint_policy.algorithm: `{policy_obj.get('algorithm', 'UNKNOWN')}`")
+    lines.append(f"- fingerprint_policy.normalization: `{policy_obj.get('normalization', 'UNKNOWN')}`")
+    if excludes_list:
+        lines.append("- fingerprint_policy.exclude:")
+        for item in excludes_list:
+            lines.append(f"  - `{item}`")
+    else:
+        lines.append("- fingerprint_policy.exclude: `UNKNOWN`")
     lines.append("")
     lines.append("## Table Index")
     lines.append("| schema | table_name | column_count | primary_key | foreign_key_count |")

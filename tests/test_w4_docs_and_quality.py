@@ -333,6 +333,7 @@ def test_w4_generate_db_schema_outputs_json_and_markdown(tmp_path: Path) -> None
     assert db_schema["tables"][0]["table_name"] == "users"
     markdown = md_out.read_text(encoding="utf-8")
     assert "# DB Schema Overview" in markdown
+    assert "## Integrity" in markdown
     assert "## Table Index" in markdown
     assert "### public.users" in markdown
 
