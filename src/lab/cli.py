@@ -35,9 +35,19 @@ def build_parser() -> argparse.ArgumentParser:
     generate_spec_parser.add_argument("--ir", required=True, help="Input ir_merged.json path")
     generate_spec_parser.add_argument("--output", required=True, help="Output SPEC.md path")
     generate_db_parser = generate_subparsers.add_parser("db-schema", help="Generate DB_SCHEMA.md")
-    generate_db_parser.add_argument("--input", help="Optional DB metadata JSON input path")
-    generate_db_parser.add_argument("--json-output", default="db_schema.json", help="Output db_schema.json path")
-    generate_db_parser.add_argument("--output", default="DB_SCHEMA.md", help="Output DB_SCHEMA.md path")
+    generate_db_parser.add_argument("--input", dest="db_schema_input", help="Optional DB metadata JSON input path")
+    generate_db_parser.add_argument(
+        "--json-output",
+        dest="db_schema_json_output",
+        default="db_schema.json",
+        help="Output db_schema.json path",
+    )
+    generate_db_parser.add_argument(
+        "--output",
+        dest="db_schema_output",
+        default="DB_SCHEMA.md",
+        help="Output DB_SCHEMA.md path",
+    )
 
     diff_parser = subparsers.add_parser("diff", help="Collect changed files between refs")
     diff_parser.add_argument("--repo", default=".", help="Repository path (default: current directory)")

@@ -76,12 +76,16 @@ lab generate spec --input ./artifacts/run-001/ir.json --output ./artifacts/run-0
 ```
 
 ### `lab generate db-schema`
-DB 메타데이터 기반으로 `DB_SCHEMA.md`를 생성한다.
+DB 메타데이터 기반으로 `db_schema.json`과 `DB_SCHEMA.md`를 생성한다.
+`--input`, `--json-output`, `--output` 플래그를 함께 사용해 호출 계약을 고정한다.
 
 예시:
 
 ```bash
-lab generate db-schema --input ./artifacts/run-001/ir.json --output ./artifacts/run-001/DB_SCHEMA.md
+lab generate db-schema \
+  --input ./artifacts/run-001/db_meta.json \
+  --json-output ./artifacts/run-001/db_schema.json \
+  --output ./artifacts/run-001/DB_SCHEMA.md
 ```
 
 ### `lab diff`

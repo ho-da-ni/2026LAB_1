@@ -15,7 +15,7 @@ from lab.shared_utils import atomic_write_json
 
 def run(args: argparse.Namespace) -> int:
     try:
-        raw = collect(getattr(args, "input", None))
+        raw = collect(args.db_schema_input)
     except (OSError, ValueError) as exc:
         print(f"[ERROR] failed to load db metadata input: {exc}", file=sys.stderr)
         return EXIT_INPUT_INVALID
@@ -23,8 +23,8 @@ def run(args: argparse.Namespace) -> int:
     payload = normalize(raw)
     markdown = render(payload)
 
-    json_output_path = Path(getattr(args, "json_output", "db_schema.json"))
-    markdown_output_path = Path(getattr(args, "output", "DB_SCHEMA.md"))
+    json_output_path = Path(args.db_schema_json_output)
+    markdown_output_path = Path(args.db_schema_output)
     try:
         atomic_write_json(json_output_path, payload)
         markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
