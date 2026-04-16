@@ -53,6 +53,7 @@ def test_w2_analyze_generates_repo_meta_and_scan_index(tmp_path: Path) -> None:
     assert isinstance(repo_meta["integrity"]["fingerprint"], str)
 
     scan_index = json.loads(scan_index_path.read_text(encoding="utf-8"))
+    assert scan_index["root"] == "."
     indexed_paths = [item["path"] for item in scan_index["artifacts"]]
     assert indexed_paths == sorted(indexed_paths)
     assert "run_context.json" in indexed_paths
