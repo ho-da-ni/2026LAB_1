@@ -102,15 +102,18 @@ def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: 
         "notes": ["UNKNOWN"],
         "needs_review": [],
     }
-    deterministic_payload = dict(payload)
-    deterministic_payload["metadata"] = {"run": {}, "workspace": {}}
-    execution = deterministic_payload.get("execution", {})
-    if isinstance(execution, dict):
-        execution["start_time_utc"] = "EXCLUDED"
-        execution["end_time_utc"] = "EXCLUDED"
-        execution["duration_ms"] = "EXCLUDED"
-    integrity = deterministic_payload.get("integrity", {})
-    if isinstance(integrity, dict):
-        integrity["output_fingerprint"] = "UNKNOWN"
-    payload["integrity"]["output_fingerprint"] = stable_sha256(deterministic_payload)
+    payload["integrity"]["output_fingerprint"] = stable_sha256(
+        payload,
+        exclude_paths=[
+            "metadata.run.run_id",
+            "metadata.run.created_at_utc",
+            "metadata.workspace.root_path",
+            "metadata.workspace.os",
+            "metadata.workspace.python_version",
+            "execution.start_time_utc",
+            "execution.end_time_utc",
+            "execution.duration_ms",
+            "integrity.output_fingerprint",
+        ],
+    )
     return payload

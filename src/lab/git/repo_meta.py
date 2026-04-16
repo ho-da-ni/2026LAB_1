@@ -104,7 +104,7 @@ def collect_repo_meta(repo: str) -> dict[str, Any]:
         "integrity": {"fingerprint": "UNKNOWN", "fingerprint_policy_version": "1.0.0"},
         "needs_review": [],
     }
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_keys=["collected_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["collected_at_utc"])
     return payload
 
 
@@ -117,10 +117,10 @@ def build_scan_index(output_dir: Path) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "schema_version": "1.0.0",
         "generated_at_utc": utc_now_iso(),
-        "root": normalize_path(str(output_dir)),
+        "root": ".",
         "summary": {"total_files": len(artifacts)},
         "artifacts": artifacts,
         "integrity": {"fingerprint": "UNKNOWN", "fingerprint_policy_version": "1.0.0"},
     }
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_keys=["generated_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["generated_at_utc"])
     return payload

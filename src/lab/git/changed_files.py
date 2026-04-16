@@ -93,5 +93,5 @@ def build_changed_files(repo: str, base: str, head: str, includes: list[str], ex
             }
         )
 
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_keys=["generated_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["generated_at_utc"])
     return payload
