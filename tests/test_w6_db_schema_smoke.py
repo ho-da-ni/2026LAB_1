@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from lab.cli import main
+from lab.cli import build_parser, main
 from lab.runtime.fingerprint import stable_sha256
 
 
@@ -33,6 +33,30 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
     assert "# DB Schema Overview" in markdown
     assert "## Integrity" in markdown
     assert "### public.users" in markdown
+
+
+def test_w6_db_schema_cli_contract_maps_flags_to_command_namespace(tmp_path: Path) -> None:
+    input_path = tmp_path / "input.json"
+    json_output_path = tmp_path / "db_schema.json"
+    markdown_output_path = tmp_path / "DB_SCHEMA.md"
+
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "generate",
+            "db-schema",
+            "--input",
+            str(input_path),
+            "--json-output",
+            str(json_output_path),
+            "--output",
+            str(markdown_output_path),
+        ]
+    )
+
+    assert args.db_schema_input == str(input_path)
+    assert args.db_schema_json_output == str(json_output_path)
+    assert args.db_schema_output == str(markdown_output_path)
 
 
 def test_w6_validate_db_detects_missing_source_evidence(tmp_path: Path) -> None:
