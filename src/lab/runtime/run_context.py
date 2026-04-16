@@ -14,6 +14,18 @@ from lab.runtime.fingerprint import stable_sha256
 
 
 def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: datetime) -> dict[str, Any]:
+    fingerprint_excludes = [
+        "metadata.run.run_id",
+        "metadata.run.created_at_utc",
+        "metadata.workspace.root_path",
+        "metadata.workspace.os",
+        "metadata.workspace.python_version",
+        "execution.start_time_utc",
+        "execution.end_time_utc",
+        "execution.duration_ms",
+        "outputs.artifact_dir",
+        "integrity.output_fingerprint",
+    ]
     command_argv = ["analyze", "--repo", args.repo, "--output-dir", args.output_dir]
     dirty_raw = git_value(args.repo, "status", "--porcelain")
     dirty = "UNKNOWN" if dirty_raw == "UNKNOWN" else ("true" if dirty_raw else "false")
@@ -77,14 +89,7 @@ def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: 
                 "algorithm": "sha256",
                 "normalization": "stable_json_canonicalization",
                 "include": [],
-                "exclude": [
-                    "metadata.run.run_id",
-                    "metadata.run.created_at_utc",
-                    "metadata.workspace",
-                    "execution.start_time_utc",
-                    "execution.end_time_utc",
-                    "execution.duration_ms",
-                ],
+                "exclude": fingerprint_excludes,
                 "path_normalization_version": "1.0.0",
             },
         },
@@ -104,16 +109,6 @@ def build_run_context(args: argparse.Namespace, start_time: datetime, end_time: 
     }
     payload["integrity"]["output_fingerprint"] = stable_sha256(
         payload,
-        exclude_paths=[
-            "metadata.run.run_id",
-            "metadata.run.created_at_utc",
-            "metadata.workspace.root_path",
-            "metadata.workspace.os",
-            "metadata.workspace.python_version",
-            "execution.start_time_utc",
-            "execution.end_time_utc",
-            "execution.duration_ms",
-            "integrity.output_fingerprint",
-        ],
+        exclude_paths=fingerprint_excludes,
     )
     return payload

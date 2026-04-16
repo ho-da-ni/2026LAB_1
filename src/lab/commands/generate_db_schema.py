@@ -1,11 +1,38 @@
-"""Generate DB schema markdown command."""
+"""Generate DB schema json/markdown command."""
 
 from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
+
+from lab.db.collector import collect
+from lab.db.normalizer import normalize
+from lab.db.renderer import render
+from lab.exit_codes import EXIT_INPUT_INVALID, EXIT_OK, EXIT_OUTPUT_WRITE_FAILED
+from lab.shared_utils import atomic_write_json
 
 
-def run(_args: argparse.Namespace) -> int:
-    print("[TODO] 'generate db-schema' command is not implemented yet.", file=sys.stderr)
-    return 1
+def run(args: argparse.Namespace) -> int:
+    try:
+        raw = collect(getattr(args, "input", None))
+    except (OSError, ValueError) as exc:
+        print(f"[ERROR] failed to load db metadata input: {exc}", file=sys.stderr)
+        return EXIT_INPUT_INVALID
+
+    payload = normalize(raw)
+    markdown = render(payload)
+
+    json_output_path = Path(getattr(args, "json_output", "db_schema.json"))
+    markdown_output_path = Path(getattr(args, "output", "DB_SCHEMA.md"))
+    try:
+        atomic_write_json(json_output_path, payload)
+        markdown_output_path.parent.mkdir(parents=True, exist_ok=True)
+        markdown_output_path.write_text(markdown, encoding="utf-8")
+    except OSError as exc:
+        print(f"[ERROR] failed to write db schema outputs: {exc}", file=sys.stderr)
+        return EXIT_OUTPUT_WRITE_FAILED
+
+    print(f"Generated: {json_output_path}")
+    print(f"Generated: {markdown_output_path}")
+    return EXIT_OK

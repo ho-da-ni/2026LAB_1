@@ -65,9 +65,9 @@ def test_w4_build_artifacts_generates_ir_merged_and_features(tmp_path: Path) -> 
     assert "metadata" in ir
     assert isinstance(ir["integrity"]["fingerprint"], str)
     canonical_ir = copy.deepcopy(ir)
-    canonical_ir["metadata"].pop("generated_at_utc", None)
-    canonical_ir["integrity"]["fingerprint"] = "UNKNOWN"
-    assert ir["integrity"]["fingerprint"] == stable_sha256(canonical_ir)
+    policy_ir = canonical_ir["integrity"]["fingerprint_policy"]
+    assert policy_ir["exclude"] == ["metadata.generated_at_utc", "integrity.fingerprint"]
+    assert ir["integrity"]["fingerprint"] == stable_sha256(canonical_ir, exclude_paths=policy_ir["exclude"])
 
     features = json.loads(feat_path.read_text(encoding="utf-8"))
     assert len(features["features"]) == 1
@@ -77,9 +77,9 @@ def test_w4_build_artifacts_generates_ir_merged_and_features(tmp_path: Path) -> 
     assert first["feature_id"].startswith("feat_")
     assert "metadata" in features
     canonical_features = copy.deepcopy(features)
-    canonical_features["metadata"].pop("generated_at_utc", None)
-    canonical_features["integrity"]["fingerprint"] = "UNKNOWN"
-    assert features["integrity"]["fingerprint"] == stable_sha256(canonical_features)
+    policy_features = canonical_features["integrity"]["fingerprint_policy"]
+    assert policy_features["exclude"] == ["metadata.generated_at_utc", "integrity.fingerprint"]
+    assert features["integrity"]["fingerprint"] == stable_sha256(canonical_features, exclude_paths=policy_features["exclude"])
 
 
 def test_w4_feature_id_is_deterministic() -> None:

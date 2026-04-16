@@ -2,14 +2,102 @@
 
 from __future__ import annotations
 
+import copy
 import re
 from pathlib import Path
 from typing import Any
 
+from lab.runtime.fingerprint import stable_sha256
 from lab.shared_utils import load_json_file
 
 
 Finding = dict[str, str]
+
+
+def _set_by_path(payload: dict[str, Any], path: str, value: Any) -> bool:
+    parts = [segment for segment in path.split(".") if segment]
+    if not parts:
+        return False
+    cursor: Any = payload
+    for segment in parts[:-1]:
+        if not isinstance(cursor, dict) or segment not in cursor:
+            return False
+        cursor = cursor[segment]
+    leaf = parts[-1]
+    if not isinstance(cursor, dict) or leaf not in cursor:
+        return False
+    cursor[leaf] = value
+    return True
+
+
+def validate_integrity_fingerprint(
+    payload: dict[str, Any],
+    *,
+    target: str,
+    fingerprint_field: str = "fingerprint",
+    required_excludes: list[str] | None = None,
+    verify_excluded_fields_are_ignored: bool = False,
+) -> list[Finding]:
+    findings: list[Finding] = []
+    if not payload:
+        return findings
+
+    integrity = payload.get("integrity")
+    if not isinstance(integrity, dict):
+        return [{"level": "ERROR", "code": "QR-INT-001", "target": target, "detail": "missing required key: integrity"}]
+
+    fingerprint = integrity.get(fingerprint_field)
+    if not isinstance(fingerprint, str) or not fingerprint:
+        return [{"level": "ERROR", "code": "QR-INT-001", "target": target, "detail": f"missing required key: integrity.{fingerprint_field}"}]
+
+    policy = integrity.get("fingerprint_policy")
+    if not isinstance(policy, dict):
+        return [{"level": "ERROR", "code": "QR-INT-002", "target": target, "detail": "missing required key: integrity.fingerprint_policy"}]
+
+    excludes = policy.get("exclude")
+    if not isinstance(excludes, list) or not all(isinstance(item, str) for item in excludes):
+        return [{"level": "ERROR", "code": "QR-INT-002", "target": target, "detail": "invalid key type: integrity.fingerprint_policy.exclude must be string array"}]
+
+    if required_excludes:
+        for path in required_excludes:
+            if path not in excludes:
+                findings.append(
+                    {
+                        "level": "ERROR",
+                        "code": "QR-INT-002",
+                        "target": target,
+                        "detail": f"required exclude path missing in fingerprint_policy.exclude: {path}",
+                    }
+                )
+
+    recalculated = stable_sha256(payload, exclude_paths=excludes)
+    if recalculated != fingerprint:
+        findings.append(
+            {
+                "level": "ERROR",
+                "code": "QR-INT-003",
+                "target": target,
+                "detail": "integrity.fingerprint mismatch with fingerprint_policy.exclude",
+            }
+        )
+
+    if verify_excluded_fields_are_ignored:
+        for excluded_path in excludes:
+            mutated = copy.deepcopy(payload)
+            changed = _set_by_path(mutated, excluded_path, "__MUTATED_FOR_VALIDATION__")
+            if not changed:
+                continue
+            mutated_hash = stable_sha256(mutated, exclude_paths=excludes)
+            if mutated_hash != fingerprint:
+                findings.append(
+                    {
+                        "level": "ERROR",
+                        "code": "QR-INT-004",
+                        "target": target,
+                        "detail": f"excluded path still affects fingerprint: {excluded_path}",
+                    }
+                )
+    return findings
 
 
 def collect_payloads(run_dir: Path, required_files: list[str], optional_files: list[str]) -> tuple[dict[str, dict[str, Any]], list[Finding]]:
@@ -53,6 +141,14 @@ def validate_run_context(run_context: dict[str, Any]) -> list[Finding]:
         findings.append({"level": "ERROR", "code": "QR-COMMON-001", "target": "run_context.json", "detail": "missing required key: schema_version"})
     if run_context and "execution" not in run_context:
         findings.append({"level": "ERROR", "code": "QR-COMMON-001", "target": "run_context.json", "detail": "missing required key: execution"})
+    findings.extend(
+        validate_integrity_fingerprint(
+            run_context,
+            target="run_context.json",
+            fingerprint_field="output_fingerprint",
+            verify_excluded_fields_are_ignored=True,
+        )
+    )
     return findings
 
 
@@ -70,6 +166,7 @@ def validate_changed_files(changed_files: dict[str, Any]) -> list[Finding]:
         total_files = summary.get("total_files")
         if isinstance(total_files, int) and total_files != len(files):
             findings.append({"level": "ERROR", "code": "QR-COMMON-002", "target": "changed_files.json", "detail": "integrity mismatch: summary.total_files != len(files)"})
+    findings.extend(validate_integrity_fingerprint(changed_files, target="changed_files.json"))
     return findings
 
 
@@ -77,6 +174,13 @@ def validate_features(features: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     if not features:
         return findings
+    findings.extend(
+        validate_integrity_fingerprint(
+            features,
+            target="features.json",
+            required_excludes=["metadata.generated_at_utc"],
+        )
+    )
     feature_list = features.get("features")
     if not isinstance(feature_list, list):
         findings.append({"level": "ERROR", "code": "QR-COMMON-001", "target": "features.json", "detail": "features must be array"})

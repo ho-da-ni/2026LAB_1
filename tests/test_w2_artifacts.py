@@ -45,6 +45,9 @@ def test_w2_analyze_generates_repo_meta_and_scan_index(tmp_path: Path) -> None:
     assert "run_id" not in run_context
     assert isinstance(run_context["integrity"]["output_fingerprint"], str)
     assert run_context["integrity"]["output_fingerprint"] != "UNKNOWN"
+    run_policy = run_context["integrity"]["fingerprint_policy"]
+    assert "outputs.artifact_dir" in run_policy["exclude"]
+    assert "metadata.workspace.root_path" in run_policy["exclude"]
 
     repo_meta = json.loads(repo_meta_path.read_text(encoding="utf-8"))
     assert repo_meta["vcs"] == "git"
@@ -54,6 +57,9 @@ def test_w2_analyze_generates_repo_meta_and_scan_index(tmp_path: Path) -> None:
 
     scan_index = json.loads(scan_index_path.read_text(encoding="utf-8"))
     assert scan_index["root"] == "."
+    scan_policy = scan_index["integrity"]["fingerprint_policy"]
+    assert "root" in scan_policy["exclude"]
+    assert "generated_at_utc" in scan_policy["exclude"]
     indexed_paths = [item["path"] for item in scan_index["artifacts"]]
     assert indexed_paths == sorted(indexed_paths)
     assert "run_context.json" in indexed_paths
@@ -73,6 +79,8 @@ def test_w2_changed_files_is_sorted_and_normalized(tmp_path: Path) -> None:
     assert paths == sorted(paths)
     assert all("\\" not in p for p in paths)
     assert payload["summary"]["total_files"] == len(payload["files"])
+    diff_policy = payload["integrity"]["fingerprint_policy"]
+    assert diff_policy["exclude"] == ["generated_at_utc", "integrity.fingerprint"]
 
 
 def test_w2_diff_failure_ref_returns_3(tmp_path: Path) -> None:

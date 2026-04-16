@@ -10,6 +10,7 @@ from lab.runtime.fingerprint import stable_sha256
 
 
 def build_changed_files(repo: str, base: str, head: str, includes: list[str], excludes: list[str]) -> dict[str, Any]:
+    fingerprint_excludes = ["generated_at_utc", "integrity.fingerprint"]
     merge_base = run_git(repo, ["merge-base", base, head])
     diff_output = run_git(repo, ["diff", "--name-status", base, head])
     generated_at_utc = git_value(repo, "log", "-1", "--format=%cI", head)
@@ -76,7 +77,15 @@ def build_changed_files(repo: str, base: str, head: str, includes: list[str], ex
         },
         "files": files,
         "filters": {"include_paths": includes, "exclude_paths": excludes},
-        "integrity": {"fingerprint": "UNKNOWN", "fingerprint_policy_version": "1.0.0"},
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy_version": "1.0.0",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": fingerprint_excludes,
+            },
+        },
         "needs_review": [],
     }
 
@@ -93,5 +102,5 @@ def build_changed_files(repo: str, base: str, head: str, includes: list[str], ex
             }
         )
 
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["generated_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=fingerprint_excludes)
     return payload

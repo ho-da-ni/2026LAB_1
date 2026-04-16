@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from lab.quality.validate_common import validate_integrity_fingerprint
 
 Finding = dict[str, str]
 
@@ -12,6 +13,13 @@ def validate_ir_merged(ir_merged: dict) -> list[Finding]:
     findings: list[Finding] = []
     if not ir_merged:
         return findings
+    findings.extend(
+        validate_integrity_fingerprint(
+            ir_merged,
+            target="ir_merged.json",
+            required_excludes=["metadata.generated_at_utc"],
+        )
+    )
     endpoints = ir_merged.get("endpoints")
     if not isinstance(endpoints, list):
         findings.append({"level": "ERROR", "code": "QR-IR-001", "target": "ir_merged.json", "detail": "endpoints must be array"})

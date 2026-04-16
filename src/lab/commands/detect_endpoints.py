@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from lab.exit_codes import EXIT_INPUT_INVALID, EXIT_OK, EXIT_OUTPUT_WRITE_FAILED
 from lab.shared_utils import atomic_write_json
 from lab.controller_detection import detect_endpoints_from_fixture
 
@@ -19,18 +20,18 @@ def run(args: argparse.Namespace) -> int:
         payload = detect_endpoints_from_fixture(input_path, case_ids=case_ids)
     except OSError as exc:
         print(f"[ERROR] failed to read fixture input: {exc}", file=sys.stderr)
-        return 4
+        return EXIT_INPUT_INVALID
     except json.JSONDecodeError as exc:
         print(f"[ERROR] invalid fixture json: {exc}", file=sys.stderr)
-        return 4
+        return EXIT_INPUT_INVALID
     except ValueError as exc:
         print(f"[ERROR] invalid fixture format: {exc}", file=sys.stderr)
-        return 4
+        return EXIT_INPUT_INVALID
 
     try:
         atomic_write_json(output_path, payload)
     except OSError as exc:
         print(f"[ERROR] failed to write endpoints.json: {exc}", file=sys.stderr)
-        return 5
+        return EXIT_OUTPUT_WRITE_FAILED
     print(f"Generated: {output_path}")
-    return 0
+    return EXIT_OK

@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lab.exit_codes import EXIT_INPUT_INVALID, EXIT_OK, EXIT_OUTPUT_WRITE_FAILED
 from lab.markdown_renderer import render_api_markdown
 from lab.shared_utils import load_json_file
 
@@ -15,14 +16,14 @@ def run(args: argparse.Namespace) -> int:
     payload, error = load_json_file(Path(args.input))
     if error or payload is None:
         print(f"[ERROR] failed to load input: {error}", file=sys.stderr)
-        return 4
+        return EXIT_INPUT_INVALID
 
     features_payload: dict[str, Any] | None = None
     if getattr(args, "features", None):
         feature_payload, feature_error = load_json_file(Path(args.features))
         if feature_error or feature_payload is None:
             print(f"[ERROR] failed to load features input: {feature_error}", file=sys.stderr)
-            return 4
+            return EXIT_INPUT_INVALID
         features_payload = feature_payload
 
     markdown = render_api_markdown(payload, features_payload=features_payload)
@@ -32,7 +33,7 @@ def run(args: argparse.Namespace) -> int:
         output_path.write_text(markdown, encoding="utf-8")
     except OSError as exc:
         print(f"[ERROR] failed to write api markdown: {exc}", file=sys.stderr)
-        return 5
+        return EXIT_OUTPUT_WRITE_FAILED
 
     print(f"Generated: {output_path}")
-    return 0
+    return EXIT_OK
