@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 from typing import Any
@@ -42,6 +41,7 @@ def normalize_endpoint_evidence(evidence: Any) -> list[dict[str, Any]]:
 
 
 def build_ir_merged(endpoints_payload: dict[str, Any], repo_base: str, repo_head: str, repo_merge_base: str) -> dict[str, Any]:
+    fingerprint_excludes = ["metadata.generated_at_utc", "integrity.fingerprint"]
     raw_endpoints = endpoints_payload.get("endpoints", [])
     endpoints = raw_endpoints if isinstance(raw_endpoints, list) else []
 
@@ -110,14 +110,14 @@ def build_ir_merged(endpoints_payload: dict[str, Any], repo_base: str, repo_head
         "integrity": {
             "fingerprint": "UNKNOWN",
             "fingerprint_policy_version": "1.0.0",
-            "exclude": ["metadata.generated_at_utc"],
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": fingerprint_excludes,
+            },
         },
     }
-    fingerprint_payload = copy.deepcopy(payload)
-    metadata = fingerprint_payload.get("metadata", {})
-    if isinstance(metadata, dict):
-        metadata.pop("generated_at_utc", None)
-    payload["integrity"]["fingerprint"] = stable_sha256(fingerprint_payload)
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=fingerprint_excludes)
     return payload
 
 
@@ -132,6 +132,7 @@ def build_feature_id(category: str, name: str, endpoint_ids: list[str], tables: 
 
 
 def build_features(ir_merged_payload: dict[str, Any]) -> dict[str, Any]:
+    fingerprint_excludes = ["metadata.generated_at_utc", "integrity.fingerprint"]
     endpoints = ir_merged_payload.get("endpoints", [])
     endpoint_list = endpoints if isinstance(endpoints, list) else []
     features: list[dict[str, Any]] = []
@@ -202,12 +203,12 @@ def build_features(ir_merged_payload: dict[str, Any]) -> dict[str, Any]:
         "integrity": {
             "fingerprint": "UNKNOWN",
             "fingerprint_policy_version": "1.0.0",
-            "exclude": ["metadata.generated_at_utc"],
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": fingerprint_excludes,
+            },
         },
     }
-    fingerprint_payload = copy.deepcopy(payload)
-    metadata = fingerprint_payload.get("metadata", {})
-    if isinstance(metadata, dict):
-        metadata.pop("generated_at_utc", None)
-    payload["integrity"]["fingerprint"] = stable_sha256(fingerprint_payload)
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=fingerprint_excludes)
     return payload

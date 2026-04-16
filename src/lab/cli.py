@@ -6,6 +6,7 @@ import argparse
 from typing import Sequence
 
 from lab.commands import analyze, build_w4, detect_endpoints, diff, generate_api, generate_db_schema, generate_spec, validate
+from lab.exit_codes import EXIT_OK
 from lab.git.changed_files import build_changed_files
 from lab.w4_artifacts import build_feature_id
 
@@ -33,7 +34,10 @@ def build_parser() -> argparse.ArgumentParser:
     generate_spec_parser.add_argument("--features", required=True, help="Input features.json path")
     generate_spec_parser.add_argument("--ir", required=True, help="Input ir_merged.json path")
     generate_spec_parser.add_argument("--output", required=True, help="Output SPEC.md path")
-    generate_subparsers.add_parser("db-schema", help="Generate DB_SCHEMA.md")
+    generate_db_parser = generate_subparsers.add_parser("db-schema", help="Generate DB_SCHEMA.md")
+    generate_db_parser.add_argument("--input", help="Optional DB metadata JSON input path")
+    generate_db_parser.add_argument("--json-output", default="db_schema.json", help="Output db_schema.json path")
+    generate_db_parser.add_argument("--output", default="DB_SCHEMA.md", help="Output DB_SCHEMA.md path")
 
     diff_parser = subparsers.add_parser("diff", help="Collect changed files between refs")
     diff_parser.add_argument("--repo", default=".", help="Repository path (default: current directory)")
@@ -69,11 +73,11 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command is None:
         parser.print_help()
-        return 0
+        return EXIT_OK
 
     if args.command == "generate" and args.generate_command is None:
         parser.parse_args(["generate", "--help"])
-        return 0
+        return EXIT_OK
 
     if args.command == "analyze":
         return analyze.run(args)
@@ -93,4 +97,4 @@ def main(argv: Sequence[str] | None = None) -> int:
         return generate_db_schema.run(args)
 
     print(f"[TODO] '{args.command}' command is not implemented yet.")
-    return 0
+    return EXIT_OK

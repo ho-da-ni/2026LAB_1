@@ -11,6 +11,7 @@ from lab.runtime.fingerprint import stable_sha256
 
 
 def collect_repo_meta(repo: str) -> dict[str, Any]:
+    fingerprint_excludes = ["collected_at_utc", "integrity.fingerprint"]
     remotes: dict[str, dict[str, str]] = {}
     try:
         remote_lines = run_git(repo, ["remote", "-v"]).splitlines()
@@ -101,14 +102,23 @@ def collect_repo_meta(repo: str) -> dict[str, Any]:
         },
         "ownership": {"codeowners_path": codeowners_path, "teams": []},
         "constraints": {"license": license_path, "runtime_versions": {"python": "UNKNOWN", "node": "UNKNOWN"}},
-        "integrity": {"fingerprint": "UNKNOWN", "fingerprint_policy_version": "1.0.0"},
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy_version": "1.0.0",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": fingerprint_excludes,
+            },
+        },
         "needs_review": [],
     }
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["collected_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=fingerprint_excludes)
     return payload
 
 
 def build_scan_index(output_dir: Path) -> dict[str, Any]:
+    fingerprint_excludes = ["generated_at_utc", "integrity.fingerprint", "root"]
     artifacts: list[dict[str, Any]] = []
     for file_path in sorted([p for p in output_dir.rglob("*") if p.is_file()], key=lambda p: p.as_posix()):
         rel_path = normalize_path(str(file_path.relative_to(output_dir)))
@@ -120,7 +130,15 @@ def build_scan_index(output_dir: Path) -> dict[str, Any]:
         "root": ".",
         "summary": {"total_files": len(artifacts)},
         "artifacts": artifacts,
-        "integrity": {"fingerprint": "UNKNOWN", "fingerprint_policy_version": "1.0.0"},
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy_version": "1.0.0",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": fingerprint_excludes,
+            },
+        },
     }
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=["generated_at_utc"])
+    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=fingerprint_excludes)
     return payload

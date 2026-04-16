@@ -8,6 +8,7 @@
 - `API.md`: API 문서 산출물의 기본 템플릿
 - `SPEC.md`: 기능/변경 명세 문서의 기본 템플릿
 - `DB_SCHEMA.md`: DB 메타데이터 기반 스키마 문서의 기본 템플릿
+- `DB_SCHEMA_JSON_SCHEMA.md`: `db_schema.json` 정규화 구조와 무결성 정책
 - `RUN_CONTEXT_SCHEMA.md`: `run_context.json` 스키마 초안 템플릿
 - `REPO_META_SCHEMA.md`: `repo_meta.json` 스키마 초안 템플릿
 - `CHANGED_FILES_SCHEMA.md`: `changed_files.json` 스키마 초안 템플릿

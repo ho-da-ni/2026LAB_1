@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from lab.cli import main
+from lab.runtime.fingerprint import stable_sha256
 
 
 def _write_json(path: Path, payload: dict) -> None:
@@ -92,22 +93,58 @@ def test_w4_generate_api_and_spec_outputs_sections(tmp_path: Path) -> None:
 
 def test_w4_validate_strict_vs_non_strict(tmp_path: Path) -> None:
     run_dir = tmp_path / "run"
+    run_context = {
+        "schema_version": "1.0.0",
+        "execution": {"exit_code": 0},
+        "integrity": {
+            "output_fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.output_fingerprint"],
+            },
+        },
+    }
+    run_context["integrity"]["output_fingerprint"] = stable_sha256(run_context, exclude_paths=["integrity.output_fingerprint"])
     _write_json(
         run_dir / "run_context.json",
-        {"schema_version": "1.0.0", "execution": {"exit_code": 0}},
+        run_context,
     )
+    changed_files = {
+        "schema_version": "1.0.0",
+        "summary": {"total_files": 0},
+        "files": [],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.fingerprint"],
+            },
+        },
+    }
+    changed_files["integrity"]["fingerprint"] = stable_sha256(changed_files, exclude_paths=["integrity.fingerprint"])
     _write_json(
         run_dir / "changed_files.json",
-        {"schema_version": "1.0.0", "summary": {"total_files": 0}, "files": []},
+        changed_files,
     )
+    ir_merged = {
+        "schema_version": "1.0.0",
+        "metadata": {"generated_at_utc": "2026-04-01T00:00:00Z"},
+        "endpoints": [{"endpoint_id": "ep_demo", "method": "UNKNOWN", "path": "/x", "source_evidence": [{"file": "a", "symbol": "b"}]}],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["metadata.generated_at_utc", "integrity.fingerprint"],
+            },
+        },
+    }
+    ir_merged["integrity"]["fingerprint"] = stable_sha256(ir_merged, exclude_paths=["metadata.generated_at_utc", "integrity.fingerprint"])
     _write_json(
         run_dir / "ir_merged.json",
-        {
-            "schema_version": "1.0.0",
-            "endpoints": [
-                {"endpoint_id": "ep_demo", "method": "UNKNOWN", "path": "/x", "source_evidence": [{"file": "a", "symbol": "b"}]}
-            ],
-        },
+        ir_merged,
     )
 
     assert main(["validate", "--run-dir", str(run_dir)]) == 0
@@ -191,5 +228,169 @@ def test_w4_generate_spec_is_deterministic_for_same_input(tmp_path: Path) -> Non
     assert hashlib.sha256(out1.read_bytes()).hexdigest() == hashlib.sha256(out2.read_bytes()).hexdigest()
 
 
-def test_w4_generate_db_schema_todo_returns_non_zero() -> None:
-    assert main(["generate", "db-schema"]) == 1
+def test_w4_generate_db_schema_default_like_invocation_returns_zero(tmp_path: Path) -> None:
+    json_out = tmp_path / "db_schema.json"
+    md_out = tmp_path / "DB_SCHEMA.md"
+    assert main(["generate", "db-schema", "--json-output", str(json_out), "--output", str(md_out)]) == 0
+
+
+def test_w4_validate_reproducibility_rules_detect_policy_mismatch(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+
+    run_context = {
+        "schema_version": "1.0.0",
+        "execution": {"exit_code": 0},
+        "integrity": {
+            "output_fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.output_fingerprint"],
+            },
+        },
+    }
+    run_context["integrity"]["output_fingerprint"] = stable_sha256(run_context, exclude_paths=["integrity.output_fingerprint"])
+    _write_json(run_dir / "run_context.json", run_context)
+
+    changed_files = {
+        "schema_version": "1.0.0",
+        "summary": {"total_files": 0},
+        "files": [],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.fingerprint"],
+            },
+        },
+    }
+    changed_files["integrity"]["fingerprint"] = stable_sha256(changed_files, exclude_paths=["integrity.fingerprint"])
+    _write_json(run_dir / "changed_files.json", changed_files)
+
+    ir_merged = {
+        "schema_version": "1.0.0",
+        "metadata": {"generated_at_utc": "2026-04-01T00:00:00Z"},
+        "endpoints": [{"endpoint_id": "ep_demo", "method": "GET", "path": "/x", "source_evidence": [{"file": "a", "symbol": "b"}]}],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.fingerprint"],
+            },
+        },
+    }
+    ir_merged["integrity"]["fingerprint"] = stable_sha256(ir_merged, exclude_paths=["integrity.fingerprint"])
+    _write_json(run_dir / "ir_merged.json", ir_merged)
+
+    assert main(["validate", "--run-dir", str(run_dir)]) == 4
+
+
+def test_w4_generate_db_schema_outputs_json_and_markdown(tmp_path: Path) -> None:
+    db_meta = {
+        "source_type": "snapshot",
+        "source_path": "artifacts/input/db_meta.json",
+        "snapshot_id": "snap_001",
+        "collected_at_utc": "2026-04-01T00:00:00Z",
+        "tables": [
+            {
+                "table_name": "users",
+                "schema_name": "public",
+                "columns": [
+                    {"name": "id", "data_type": "bigint", "nullable": False, "default": None, "is_primary_key": True},
+                    {"name": "email", "data_type": "varchar", "nullable": False, "default": "UNKNOWN", "is_primary_key": False},
+                ],
+                "primary_key": {"columns": ["id"]},
+                "foreign_keys": [],
+                "indexes": [{"name": "idx_users_email", "unique": True, "columns": ["email"]}],
+                "source_evidence": [{"file": "schema.sql", "symbol": "create table users", "line_start": 1, "line_end": 20}],
+                "needs_review": [],
+            }
+        ],
+    }
+    input_path = tmp_path / "db_meta.json"
+    input_path.write_text(json.dumps(db_meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    json_out = tmp_path / "db_schema.json"
+    md_out = tmp_path / "DB_SCHEMA.md"
+
+    assert main(
+        [
+            "generate",
+            "db-schema",
+            "--input",
+            str(input_path),
+            "--json-output",
+            str(json_out),
+            "--output",
+            str(md_out),
+        ]
+    ) == 0
+
+    db_schema = json.loads(json_out.read_text(encoding="utf-8"))
+    assert db_schema["schema_version"] == "1.0.0"
+    assert isinstance(db_schema["integrity"]["fingerprint"], str)
+    assert db_schema["tables"][0]["table_name"] == "users"
+    markdown = md_out.read_text(encoding="utf-8")
+    assert "# DB Schema Overview" in markdown
+    assert "## Table Index" in markdown
+    assert "### public.users" in markdown
+
+
+def test_w4_validate_db_schema_markdown_sections_and_unknown_policy(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run"
+    run_context = {
+        "schema_version": "1.0.0",
+        "execution": {"exit_code": 0},
+        "integrity": {
+            "output_fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.output_fingerprint"],
+            },
+        },
+    }
+    run_context["integrity"]["output_fingerprint"] = stable_sha256(run_context, exclude_paths=["integrity.output_fingerprint"])
+    _write_json(run_dir / "run_context.json", run_context)
+    changed_files = {
+        "schema_version": "1.0.0",
+        "summary": {"total_files": 0},
+        "files": [],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.fingerprint"],
+            },
+        },
+    }
+    changed_files["integrity"]["fingerprint"] = stable_sha256(changed_files, exclude_paths=["integrity.fingerprint"])
+    _write_json(run_dir / "changed_files.json", changed_files)
+
+    db_schema = {
+        "schema_version": "1.0.0",
+        "metadata": {
+            "generated_at_utc": "2026-04-01T00:00:00Z",
+            "source_type": "UNKNOWN",
+            "source_path": "UNKNOWN",
+            "snapshot_id": "UNKNOWN",
+            "collected_at_utc": "UNKNOWN",
+        },
+        "tables": [],
+        "needs_review": ["needs_review.db_schema.empty"],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["metadata.generated_at_utc", "integrity.fingerprint"],
+            },
+        },
+    }
+    db_schema["integrity"]["fingerprint"] = stable_sha256(db_schema, exclude_paths=["metadata.generated_at_utc", "integrity.fingerprint"])
+    _write_json(run_dir / "db_schema.json", db_schema)
+    (run_dir / "DB_SCHEMA.md").write_text("# bad\n- `UNKNOWN`\n", encoding="utf-8")
+
+    assert main(["validate", "--run-dir", str(run_dir)]) == 4
