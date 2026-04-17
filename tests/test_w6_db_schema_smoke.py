@@ -4,6 +4,45 @@ import json
 from pathlib import Path
 
 from lab.cli import build_parser, main
+from lab.runtime.fingerprint import stable_sha256
+
+
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _write_validate_required_files(run_dir: Path) -> None:
+    run_context = {
+        "schema_version": "1.0.0",
+        "execution": {"exit_code": 0},
+        "integrity": {
+            "output_fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.output_fingerprint"],
+            },
+        },
+    }
+    run_context["integrity"]["output_fingerprint"] = stable_sha256(run_context, exclude_paths=["integrity.output_fingerprint"])
+    _write_json(run_dir / "run_context.json", run_context)
+
+    changed_files = {
+        "schema_version": "1.0.0",
+        "summary": {"total_files": 0},
+        "files": [],
+        "integrity": {
+            "fingerprint": "UNKNOWN",
+            "fingerprint_policy": {
+                "algorithm": "sha256",
+                "normalization": "stable_json_canonicalization",
+                "exclude": ["integrity.fingerprint"],
+            },
+        },
+    }
+    changed_files["integrity"]["fingerprint"] = stable_sha256(changed_files, exclude_paths=["integrity.fingerprint"])
+    _write_json(run_dir / "changed_files.json", changed_files)
 
 
 def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
@@ -31,6 +70,62 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
     assert "## Database" in markdown
     assert "## Owners" in markdown
     assert "### PUBLIC.USERS" in markdown
+
+
+def test_w6_db_schema_validate_strict_passes_for_schema_compliant_output(tmp_path: Path) -> None:
+    fixture_path = Path("tests/fixtures/db/sample_db_input.json")
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_validate_required_files(run_dir)
+
+    assert (
+        main(
+            [
+                "generate",
+                "db-schema",
+                "--input",
+                str(fixture_path),
+                "--json-output",
+                str(run_dir / "db_schema.json"),
+                "--output",
+                str(run_dir / "DB_SCHEMA.md"),
+            ]
+        )
+        == 0
+    )
+    assert main(["validate", "--run-dir", str(run_dir), "--strict"]) == 0
+
+
+def test_w6_db_schema_validate_detects_schema_contract_violation(tmp_path: Path) -> None:
+    fixture_path = Path("tests/fixtures/db/sample_db_input.json")
+    run_dir = tmp_path / "run"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    _write_validate_required_files(run_dir)
+
+    assert (
+        main(
+            [
+                "generate",
+                "db-schema",
+                "--input",
+                str(fixture_path),
+                "--json-output",
+                str(run_dir / "db_schema.json"),
+                "--output",
+                str(run_dir / "DB_SCHEMA.md"),
+            ]
+        )
+        == 0
+    )
+
+    db_schema = json.loads((run_dir / "db_schema.json").read_text(encoding="utf-8"))
+    db_schema["tables"][0]["table_id"] = "invalid-format"
+    _write_json(run_dir / "db_schema.json", db_schema)
+
+    assert main(["validate", "--run-dir", str(run_dir), "--strict"]) == 4
+    report = json.loads((run_dir / "quality_gate_report.json").read_text(encoding="utf-8"))
+    assert report["summary"]["error_count"] >= 1
+    assert any(item["code"] == "QR-DB-002" for item in report["errors"])
 
 
 def test_w6_db_schema_cli_contract_maps_flags_to_command_namespace(tmp_path: Path) -> None:

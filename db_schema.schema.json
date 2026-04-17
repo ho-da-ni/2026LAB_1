@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lab.local/schemas/db_schema.schema.json",
+  "title": "LAB W6 DB Schema",
+  "type": "object",
+  "required": ["schema_version", "source", "database", "owners", "tables", "notes", "needs_review"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": "w6.db_schema.v1" },
+    "source": {
+      "type": "object",
+      "required": ["collector", "collected_at", "dictionary_views"],
+      "additionalProperties": false,
+      "properties": {
+        "collector": { "type": "string", "minLength": 1 },
+        "collected_at": { "type": "string", "minLength": 1 },
+        "dictionary_views": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "required": ["vendor", "host", "port", "service_name", "sid"],
+      "additionalProperties": false,
+      "properties": {
+        "vendor": { "type": "string", "minLength": 1 },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "service_name": { "type": ["string", "null"] },
+        "sid": { "type": ["string", "null"] }
+      }
+    },
+    "owners": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "tables": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/table" }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "needs_review": { "type": "boolean" }
+  },
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "required": ["source_view", "owner", "object_name", "row_ref"],
+      "additionalProperties": true,
+      "properties": {
+        "source_view": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "object_name": { "type": "string", "minLength": 1 },
+        "column_name": { "type": ["string", "null"] },
+        "constraint_name": { "type": ["string", "null"] },
+        "row_ref": { "type": "object" }
+      }
+    },
+    "column": {
+      "type": "object",
+      "required": ["name", "ordinal_position", "data_type", "nullable", "needs_review", "unknown", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "ordinal_position": { "type": "integer", "minimum": 1 },
+        "data_type": { "type": "string", "minLength": 1 },
+        "data_length": { "type": ["integer", "null"] },
+        "data_precision": { "type": ["integer", "null"] },
+        "data_scale": { "type": ["integer", "null"] },
+        "nullable": { "type": "boolean" },
+        "default": { "type": ["string", "null", "number", "boolean"] },
+        "comment": { "type": ["string", "null"] },
+        "needs_review": { "type": "boolean" },
+        "unknown": { "type": "boolean" },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } }
+      }
+    },
+    "primary_key": {
+      "type": ["object", "null"],
+      "required": ["constraint_name", "columns", "evidence", "needs_review", "unknown"],
+      "properties": {
+        "constraint_name": { "type": "string", "minLength": 1 },
+        "columns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "needs_review": { "type": "boolean" },
+        "unknown": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "foreign_key": {
+      "type": "object",
+      "required": ["fk_id", "constraint_name", "columns", "referenced_owner", "referenced_table", "column_mapping", "evidence", "needs_review", "unknown"],
+      "additionalProperties": false,
+      "properties": {
+        "fk_id": { "type": "string", "minLength": 1 },
+        "constraint_name": { "type": "string", "minLength": 1 },
+        "columns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "referenced_owner": { "type": "string", "minLength": 1 },
+        "referenced_table": { "type": "string", "minLength": 1 },
+        "column_mapping": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["local_column", "referenced_column"],
+            "additionalProperties": false,
+            "properties": {
+              "local_column": { "type": "string", "minLength": 1 },
+              "referenced_column": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "needs_review": { "type": "boolean" },
+        "unknown": { "type": "boolean" }
+      }
+    },
+    "table": {
+      "type": "object",
+      "required": ["table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "evidence", "needs_review", "unknown"],
+      "additionalProperties": false,
+      "properties": {
+        "table_id": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "table_name": { "type": "string", "minLength": 1 },
+        "table_comment": { "type": ["string", "null"] },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
+        "primary_key": { "$ref": "#/$defs/primary_key" },
+        "foreign_keys": { "type": "array", "items": { "$ref": "#/$defs/foreign_key" } },
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+        "needs_review": { "type": "boolean" },
+        "unknown": { "type": "boolean" }
+      }
+    }
+  }
+}
