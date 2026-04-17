@@ -75,15 +75,31 @@ lab generate api --input ./artifacts/run-001/ir.json --output ./artifacts/run-00
 lab generate spec --input ./artifacts/run-001/ir.json --output ./artifacts/run-001/SPEC.md
 ```
 
+### `lab collect db`
+DB 메타데이터 수집 단계 전용 명령이다. W6에서는 인자 계약 검증 및 수집 JSON 스냅샷(`db_collection.json`) 생성까지를 책임진다.
+
+예시:
+
+```bash
+lab collect db \
+  --host 10.10.20.15 \
+  --service-name ORCLPDB1 \
+  --username app_reader \
+  --password-env DB_PASSWORD \
+  --owner APP \
+  --output-dir ./artifacts/run-001 \
+  --format json
+```
+
 ### `lab generate db-schema`
-DB 메타데이터 기반으로 `db_schema.json`과 `DB_SCHEMA.md`를 생성한다.
-`--input`, `--json-output`, `--output` 플래그를 함께 사용해 호출 계약을 고정한다.
+`lab collect db` 산출물(`db_collection.json`)을 입력으로 `db_schema.json`과 `DB_SCHEMA.md`를 생성한다.
+`--input`, `--json-output`, `--output` 플래그를 함께 사용해 렌더링 계약을 고정한다.
 
 예시:
 
 ```bash
 lab generate db-schema \
-  --input ./artifacts/run-001/db_meta.json \
+  --input ./artifacts/run-001/db_collection.json \
   --json-output ./artifacts/run-001/db_schema.json \
   --output ./artifacts/run-001/DB_SCHEMA.md
 ```
@@ -113,8 +129,9 @@ lab validate --run-dir ./artifacts/run-001 --strict
 1. `lab analyze`
 2. `lab generate api`
 3. `lab generate spec`
-4. `lab generate db-schema`
-5. `lab validate`
+4. `lab collect db`
+5. `lab generate db-schema`
+6. `lab validate`
 
 ## 비범위 명시
 

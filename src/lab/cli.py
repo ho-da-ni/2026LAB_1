@@ -5,7 +5,17 @@ from __future__ import annotations
 import argparse
 from typing import Sequence
 
-from lab.commands import analyze, build_w4, detect_endpoints, diff, generate_api, generate_db_schema, generate_spec, validate
+from lab.commands import (
+    analyze,
+    build_w4,
+    collect_db,
+    detect_endpoints,
+    diff,
+    generate_api,
+    generate_db_schema,
+    generate_spec,
+    validate,
+)
 from lab.exit_codes import EXIT_OK
 from lab.git.changed_files import build_changed_files
 from lab.w4_artifacts import build_feature_id
@@ -23,6 +33,25 @@ def build_parser() -> argparse.ArgumentParser:
     analyze_parser.add_argument("--repo", default=".", help="Repository path (default: current directory)")
     analyze_parser.add_argument("--output-dir", required=True, help="Output directory for analysis artifacts")
 
+    collect_parser = subparsers.add_parser("collect", help="Collect source metadata artifacts")
+    collect_subparsers = collect_parser.add_subparsers(dest="collect_command", metavar="TARGET")
+    collect_db_parser = collect_subparsers.add_parser("db", help="Collect DB metadata JSON")
+    collect_db_parser.add_argument("--host", required=True, help="DB host or IP")
+    collect_db_parser.add_argument("--port", type=int, default=1521, help="DB listener port (default: 1521)")
+    collect_target_group = collect_db_parser.add_mutually_exclusive_group(required=True)
+    collect_target_group.add_argument("--service-name", help="Oracle service name (mutually exclusive with --sid)")
+    collect_target_group.add_argument("--sid", help="Oracle SID (mutually exclusive with --service-name)")
+    collect_db_parser.add_argument("--username", required=True, help="DB login username")
+    collect_password_group = collect_db_parser.add_mutually_exclusive_group(required=True)
+    collect_password_group.add_argument("--password", help="DB password (plain text, discouraged)")
+    collect_password_group.add_argument("--password-stdin", action="store_true", help="Read DB password from stdin")
+    collect_password_group.add_argument("--password-env", help="Read DB password from environment variable name")
+    collect_db_parser.add_argument("--owner", action="append", default=[], help="Schema owner filter (repeatable)")
+    collect_db_parser.add_argument("--output-dir", required=True, help="Output directory for db collection artifact")
+    collect_db_parser.add_argument("--timeout", type=int, default=30, help="DB query timeout in seconds (default: 30)")
+    collect_db_parser.add_argument("--include-comments", action="store_true", help="Include comments metadata")
+    collect_db_parser.add_argument("--format", dest="db_collect_format", default="json", help="Output format (json only)")
+
     generate_parser = subparsers.add_parser("generate", help="Generate markdown artifacts")
     generate_subparsers = generate_parser.add_subparsers(dest="generate_command", metavar="TARGET")
     generate_api_parser = generate_subparsers.add_parser("api", help="Generate API.md")
@@ -34,8 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
     generate_spec_parser.add_argument("--features", required=True, help="Input features.json path")
     generate_spec_parser.add_argument("--ir", required=True, help="Input ir_merged.json path")
     generate_spec_parser.add_argument("--output", required=True, help="Output SPEC.md path")
-    generate_db_parser = generate_subparsers.add_parser("db-schema", help="Generate DB_SCHEMA.md")
-    generate_db_parser.add_argument("--input", dest="db_schema_input", help="Optional DB metadata JSON input path")
+    generate_db_parser = generate_subparsers.add_parser("db-schema", help="Render DB_SCHEMA.md from collected db metadata")
+    generate_db_parser.add_argument("--input", dest="db_schema_input", required=True, help="DB collection JSON input path")
     generate_db_parser.add_argument(
         "--json-output",
         dest="db_schema_json_output",
@@ -85,12 +114,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.print_help()
         return EXIT_OK
 
+    if args.command == "collect" and args.collect_command is None:
+        parser.parse_args(["collect", "--help"])
+        return EXIT_OK
+
     if args.command == "generate" and args.generate_command is None:
         parser.parse_args(["generate", "--help"])
         return EXIT_OK
 
     if args.command == "analyze":
         return analyze.run(args)
+    if args.command == "collect" and args.collect_command == "db":
+        return collect_db.run(args)
     if args.command == "diff":
         return diff.run(args)
     if args.command == "validate":

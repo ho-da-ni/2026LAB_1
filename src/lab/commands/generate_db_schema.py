@@ -17,7 +17,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         raw = collect(args.db_schema_input)
     except (OSError, ValueError) as exc:
-        print(f"[ERROR] failed to load db metadata input: {exc}", file=sys.stderr)
+        print(f"[ERROR] failed to load db collection input: {exc}", file=sys.stderr)
         return EXIT_INPUT_INVALID
 
     payload = normalize(raw)
