@@ -228,10 +228,11 @@ def test_w4_generate_spec_is_deterministic_for_same_input(tmp_path: Path) -> Non
     assert hashlib.sha256(out1.read_bytes()).hexdigest() == hashlib.sha256(out2.read_bytes()).hexdigest()
 
 
-def test_w4_generate_db_schema_default_like_invocation_returns_zero(tmp_path: Path) -> None:
+def test_w4_generate_db_schema_requires_collection_input(tmp_path: Path) -> None:
     json_out = tmp_path / "db_schema.json"
     md_out = tmp_path / "DB_SCHEMA.md"
-    assert main(["generate", "db-schema", "--json-output", str(json_out), "--output", str(md_out)]) == 0
+    fixture_path = Path("tests/fixtures/db/sample_db_input.json")
+    assert main(["generate", "db-schema", "--input", str(fixture_path), "--json-output", str(json_out), "--output", str(md_out)]) == 0
 
 
 def test_w4_validate_reproducibility_rules_detect_policy_mismatch(tmp_path: Path) -> None:
@@ -328,14 +329,15 @@ def test_w4_generate_db_schema_outputs_json_and_markdown(tmp_path: Path) -> None
     ) == 0
 
     db_schema = json.loads(json_out.read_text(encoding="utf-8"))
-    assert db_schema["schema_version"] == "1.0.0"
-    assert isinstance(db_schema["integrity"]["fingerprint"], str)
-    assert db_schema["tables"][0]["table_name"] == "users"
+    assert db_schema["schema_version"] == "w6.db_schema.v1"
+    assert db_schema["tables"][0]["table_name"] == "USERS"
+    assert "table_id" in db_schema["tables"][0]
     markdown = md_out.read_text(encoding="utf-8")
     assert "# DB Schema Overview" in markdown
-    assert "## Integrity" in markdown
+    assert "## Source" in markdown
+    assert "## Database" in markdown
     assert "## Table Index" in markdown
-    assert "### public.users" in markdown
+    assert "### PUBLIC.USERS" in markdown
 
 
 def test_w4_validate_db_schema_markdown_sections_and_unknown_policy(tmp_path: Path) -> None:

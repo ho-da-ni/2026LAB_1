@@ -4,146 +4,260 @@ from __future__ import annotations
 
 from typing import Any
 
-from lab.runtime.fingerprint import stable_sha256
-from lab.shared_utils import utc_now_iso
 
-FINGERPRINT_EXCLUDES = ["metadata.generated_at_utc", "integrity.fingerprint"]
+def _to_bool(value: Any, *, default: bool = False) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "y"}:
+            return True
+        if lowered in {"false", "0", "no", "n"}:
+            return False
+    return default
 
 
-def _normalize_column(raw: Any) -> dict[str, Any]:
+def _normalize_evidence(raw_list: Any, *, fallback_view: str, owner: str, object_name: str) -> list[dict[str, Any]]:
+    evidence_rows: list[dict[str, Any]] = []
+    if isinstance(raw_list, list):
+        for row in raw_list:
+            if not isinstance(row, dict):
+                continue
+            evidence_rows.append(
+                {
+                    "source_view": str(row.get("source_view", fallback_view)),
+                    "owner": str(row.get("owner", owner)),
+                    "object_name": str(row.get("object_name", object_name)),
+                    "column_name": row.get("column_name"),
+                    "constraint_name": row.get("constraint_name"),
+                    "row_ref": row.get("row_ref", {}),
+                }
+            )
+    if evidence_rows:
+        return sorted(evidence_rows, key=lambda e: (e["source_view"], e["owner"], e["object_name"], str(e.get("column_name") or "")))
+    return [
+        {
+            "source_view": fallback_view,
+            "owner": owner,
+            "object_name": object_name,
+            "column_name": None,
+            "constraint_name": None,
+            "row_ref": {"status": "MISSING_SOURCE_EVIDENCE"},
+        }
+    ]
+
+
+def _normalize_column(raw: Any, *, owner: str, table_name: str, ordinal_default: int) -> dict[str, Any]:
     item = raw if isinstance(raw, dict) else {}
-    references = item.get("references", {})
-    refs = references if isinstance(references, dict) else {}
+    name = str(item.get("name", "UNKNOWN")).upper()
+    data_type = str(item.get("data_type", "UNKNOWN")).upper()
+    ordinal_position = item.get("ordinal_position", ordinal_default)
+    if not isinstance(ordinal_position, int) or ordinal_position < 1:
+        ordinal_position = ordinal_default
+
+    evidence = _normalize_evidence(
+        item.get("evidence"),
+        fallback_view="ALL_TAB_COLUMNS",
+        owner=owner,
+        object_name=table_name,
+    )
+
+    unknown = name == "UNKNOWN" or data_type == "UNKNOWN"
+    needs_review = _to_bool(item.get("needs_review"), default=unknown)
+
     return {
-        "name": str(item.get("name", "UNKNOWN")),
-        "data_type": str(item.get("data_type", "UNKNOWN")),
-        "nullable": item.get("nullable", "UNKNOWN"),
-        "default": item.get("default", "UNKNOWN"),
-        "is_primary_key": bool(item.get("is_primary_key", False)),
-        "is_foreign_key": bool(item.get("is_foreign_key", False)),
-        "references": {
-            "table": str(refs.get("table", "UNKNOWN")),
-            "column": str(refs.get("column", "UNKNOWN")),
-        },
+        "name": name,
+        "ordinal_position": ordinal_position,
+        "data_type": data_type,
+        "data_length": item.get("data_length"),
+        "data_precision": item.get("data_precision"),
+        "data_scale": item.get("data_scale"),
+        "nullable": _to_bool(item.get("nullable"), default=True),
+        "default": item.get("default"),
+        "comment": item.get("comment"),
+        "needs_review": needs_review,
+        "unknown": unknown,
+        "evidence": evidence,
     }
 
 
-def _normalize_foreign_key(raw: Any) -> dict[str, Any]:
+def _normalize_pk(raw: Any, *, owner: str, table_name: str, columns: list[dict[str, Any]]) -> dict[str, Any] | None:
+    if raw is None:
+        return None
     item = raw if isinstance(raw, dict) else {}
+    constraint_name = str(item.get("constraint_name", item.get("name", "UNKNOWN"))).upper()
+    cols = item.get("columns")
+    if isinstance(cols, list) and cols:
+        pk_columns = [str(c).upper() for c in cols]
+    else:
+        pk_columns = [c["name"] for c in columns if c.get("name") != "UNKNOWN" and _to_bool(c.get("is_primary_key"))]
+
+    evidence = _normalize_evidence(
+        item.get("evidence"),
+        fallback_view="ALL_CONSTRAINTS",
+        owner=owner,
+        object_name=table_name,
+    )
+    unknown = constraint_name == "UNKNOWN" or len(pk_columns) == 0
+    needs_review = _to_bool(item.get("needs_review"), default=unknown)
+
     return {
-        "name": str(item.get("name", "UNKNOWN")),
-        "column": str(item.get("column", "UNKNOWN")),
-        "references_table": str(item.get("references_table", "UNKNOWN")),
-        "references_column": str(item.get("references_column", "UNKNOWN")),
-        "on_delete": str(item.get("on_delete", "UNKNOWN")),
-        "on_update": str(item.get("on_update", "UNKNOWN")),
+        "constraint_name": constraint_name,
+        "columns": pk_columns,
+        "evidence": evidence,
+        "needs_review": needs_review,
+        "unknown": unknown,
     }
 
 
-def _normalize_index(raw: Any) -> dict[str, Any]:
+def _normalize_fk(raw: Any, *, owner: str, table_name: str) -> dict[str, Any]:
     item = raw if isinstance(raw, dict) else {}
-    columns = item.get("columns", [])
-    return {
-        "name": str(item.get("name", "UNKNOWN")),
-        "unique": bool(item.get("unique", False)),
-        "columns": sorted(str(column) for column in columns) if isinstance(columns, list) else [],
-    }
+    constraint_name = str(item.get("constraint_name", item.get("name", "UNKNOWN"))).upper()
 
+    columns_raw = item.get("columns")
+    if isinstance(columns_raw, list) and columns_raw:
+        columns = [str(c).upper() for c in columns_raw]
+    else:
+        one_col = str(item.get("column", "UNKNOWN")).upper()
+        columns = [] if one_col == "UNKNOWN" else [one_col]
 
-def _normalize_source_evidence(raw: Any) -> dict[str, Any]:
-    item = raw if isinstance(raw, dict) else {}
+    ref_owner = str(item.get("referenced_owner", owner)).upper()
+    ref_table = str(item.get("referenced_table", item.get("references_table", "UNKNOWN"))).upper()
+
+    mapping_raw = item.get("column_mapping")
+    if isinstance(mapping_raw, list) and mapping_raw:
+        column_mapping = [
+            {
+                "local_column": str(m.get("local_column", "UNKNOWN")).upper(),
+                "referenced_column": str(m.get("referenced_column", "UNKNOWN")).upper(),
+            }
+            for m in mapping_raw
+            if isinstance(m, dict)
+        ]
+    else:
+        local_column = columns[0] if columns else "UNKNOWN"
+        referenced_column = str(item.get("referenced_column", item.get("references_column", "UNKNOWN"))).upper()
+        column_mapping = [{"local_column": local_column, "referenced_column": referenced_column}]
+
+    evidence = _normalize_evidence(
+        item.get("evidence"),
+        fallback_view="ALL_CONSTRAINTS",
+        owner=owner,
+        object_name=table_name,
+    )
+
+    fk_id = f"{owner}.{table_name}.{constraint_name}"
+    unknown = constraint_name == "UNKNOWN" or ref_table == "UNKNOWN"
+    needs_review = _to_bool(item.get("needs_review"), default=unknown)
+
     return {
-        "file": str(item.get("file", "UNKNOWN")),
-        "symbol": str(item.get("symbol", "UNKNOWN")),
-        "line_start": item.get("line_start", "UNKNOWN"),
-        "line_end": item.get("line_end", "UNKNOWN"),
+        "fk_id": fk_id,
+        "constraint_name": constraint_name,
+        "columns": columns,
+        "referenced_owner": ref_owner,
+        "referenced_table": ref_table,
+        "column_mapping": column_mapping,
+        "evidence": evidence,
+        "needs_review": needs_review,
+        "unknown": unknown,
     }
 
 
 def _normalize_table(raw: Any) -> dict[str, Any]:
     item = raw if isinstance(raw, dict) else {}
-    columns_raw = item.get("columns", [])
-    columns = [_normalize_column(col) for col in columns_raw] if isinstance(columns_raw, list) else []
-    columns = sorted(columns, key=lambda col: str(col.get("name", "UNKNOWN")))
+    owner = str(item.get("owner", item.get("schema_name", item.get("schema", "UNKNOWN"))).upper())
+    table_name = str(item.get("table_name", item.get("name", "UNKNOWN"))).upper()
+    table_id = f"{owner}.{table_name}"
 
-    pk = item.get("primary_key", {})
-    primary_key = pk if isinstance(pk, dict) else {}
-    pk_columns = primary_key.get("columns", [])
-    primary_key_columns = sorted(str(col) for col in pk_columns) if isinstance(pk_columns, list) else []
+    columns_raw = item.get("columns")
+    columns = []
+    if isinstance(columns_raw, list):
+        for idx, col in enumerate(columns_raw, start=1):
+            columns.append(_normalize_column(col, owner=owner, table_name=table_name, ordinal_default=idx))
+    columns = sorted(columns, key=lambda c: (int(c.get("ordinal_position", 999999)), c.get("name", "UNKNOWN")))
 
-    fks = item.get("foreign_keys", [])
-    foreign_keys = [_normalize_foreign_key(fk) for fk in fks] if isinstance(fks, list) else []
-    foreign_keys = sorted(
-        foreign_keys,
-        key=lambda fk: (str(fk.get("name", "UNKNOWN")), str(fk.get("column", "UNKNOWN"))),
+    primary_key = _normalize_pk(item.get("primary_key"), owner=owner, table_name=table_name, columns=columns)
+
+    foreign_keys_raw = item.get("foreign_keys")
+    foreign_keys = [_normalize_fk(fk, owner=owner, table_name=table_name) for fk in foreign_keys_raw] if isinstance(foreign_keys_raw, list) else []
+    foreign_keys = sorted(foreign_keys, key=lambda fk: fk.get("fk_id", "UNKNOWN"))
+
+    evidence = _normalize_evidence(
+        item.get("evidence", item.get("source_evidence")),
+        fallback_view="ALL_TABLES",
+        owner=owner,
+        object_name=table_name,
     )
 
-    idx = item.get("indexes", [])
-    indexes = [_normalize_index(index) for index in idx] if isinstance(idx, list) else []
-    indexes = sorted(indexes, key=lambda index: str(index.get("name", "UNKNOWN")))
+    has_unknown_column = any(_to_bool(col.get("unknown")) for col in columns)
+    has_unknown_fk = any(_to_bool(fk.get("unknown")) for fk in foreign_keys)
+    pk_unknown = _to_bool(primary_key.get("unknown")) if isinstance(primary_key, dict) else False
 
-    source_evidence = item.get("source_evidence", [])
-    evidence_rows = [_normalize_source_evidence(ev) for ev in source_evidence] if isinstance(source_evidence, list) else []
-    evidence_rows = sorted(
-        evidence_rows,
-        key=lambda ev: (str(ev.get("file", "UNKNOWN")), str(ev.get("symbol", "UNKNOWN"))),
-    )
+    unknown = owner == "UNKNOWN" or table_name == "UNKNOWN" or len(columns) == 0 or has_unknown_column or has_unknown_fk or pk_unknown
+    needs_review = _to_bool(item.get("needs_review"), default=unknown)
 
-    needs_review_raw = item.get("needs_review", [])
-    needs_review = sorted(str(code) for code in needs_review_raw) if isinstance(needs_review_raw, list) else []
-
-    table = {
-        "table_name": str(item.get("table_name", item.get("name", "UNKNOWN"))),
-        "schema_name": str(item.get("schema_name", item.get("schema", "UNKNOWN"))),
+    return {
+        "table_id": table_id,
+        "owner": owner,
+        "table_name": table_name,
+        "table_comment": item.get("table_comment"),
         "columns": columns,
-        "primary_key": {"columns": primary_key_columns},
+        "primary_key": primary_key,
         "foreign_keys": foreign_keys,
-        "indexes": indexes,
-        "source_evidence": evidence_rows,
+        "evidence": evidence,
         "needs_review": needs_review,
+        "unknown": unknown,
     }
-    if table["table_name"] == "UNKNOWN" and "needs_review.table_name_unknown" not in table["needs_review"]:
-        table["needs_review"].append("needs_review.table_name_unknown")
-    if not table["columns"] and "needs_review.columns_missing" not in table["needs_review"]:
-        table["needs_review"].append("needs_review.columns_missing")
-    if not table["source_evidence"] and "needs_review.source_evidence_missing" not in table["needs_review"]:
-        table["needs_review"].append("needs_review.source_evidence_missing")
-    table["needs_review"] = sorted(table["needs_review"])
-    return table
 
 
 def normalize(raw: dict[str, Any]) -> dict[str, Any]:
-    meta = raw.get("metadata", {})
-    metadata = meta if isinstance(meta, dict) else {}
-    tables_raw = raw.get("tables", [])
-    tables = [_normalize_table(table) for table in tables_raw] if isinstance(tables_raw, list) else []
-    tables = sorted(tables, key=lambda table: (str(table.get("schema_name", "UNKNOWN")), str(table.get("table_name", "UNKNOWN"))))
+    metadata = raw.get("metadata") if isinstance(raw.get("metadata"), dict) else {}
+    connection = metadata.get("connection") if isinstance(metadata.get("connection"), dict) else {}
 
-    needs_review_raw = raw.get("needs_review", [])
-    needs_review = sorted(str(code) for code in needs_review_raw) if isinstance(needs_review_raw, list) else []
-    if not tables and "needs_review.db_schema.empty" not in needs_review:
-        needs_review.append("needs_review.db_schema.empty")
+    host = str(connection.get("host", raw.get("host", "UNKNOWN")))
+    port = connection.get("port", raw.get("port", 1521))
+    if not isinstance(port, int):
+        port = 1521
+    service_name = connection.get("target") if connection.get("target_mode") == "service_name" else raw.get("service_name")
+    sid = connection.get("target") if connection.get("target_mode") == "sid" else raw.get("sid")
 
-    payload: dict[str, Any] = {
-        "schema_version": "1.0.0",
-        "metadata": {
-            "generated_at_utc": utc_now_iso(),
-            "source_type": str(metadata.get("source_type", raw.get("source_type", "UNKNOWN"))),
-            "source_path": str(metadata.get("source_path", raw.get("source_path", "UNKNOWN"))),
-            "snapshot_id": str(metadata.get("snapshot_id", raw.get("snapshot_id", "UNKNOWN"))),
-            "collected_at_utc": str(metadata.get("collected_at_utc", raw.get("collected_at_utc", "UNKNOWN"))),
+    owners_raw = connection.get("owner_filters", raw.get("owners", []))
+    owners = sorted({str(owner).upper() for owner in owners_raw if str(owner).strip()}) if isinstance(owners_raw, list) else []
+
+    tables_raw = raw.get("tables") if isinstance(raw.get("tables"), list) else []
+    tables = [_normalize_table(table) for table in tables_raw]
+    tables = sorted(tables, key=lambda t: t.get("table_id", "UNKNOWN"))
+
+    notes_raw = raw.get("notes")
+    notes = [str(note) for note in notes_raw] if isinstance(notes_raw, list) else []
+    if not tables:
+        notes.append("No tables were collected; check owner filters and collection privileges.")
+
+    needs_review = bool(any(table.get("needs_review") for table in tables) or len(tables) == 0)
+
+    return {
+        "schema_version": "w6.db_schema.v1",
+        "source": {
+            "collector": "lab collect db",
+            "collected_at": str(metadata.get("collected_at_utc", raw.get("collected_at_utc", "UNKNOWN"))),
+            "dictionary_views": [
+                "ALL_TABLES",
+                "ALL_TAB_COLUMNS",
+                "ALL_CONSTRAINTS",
+                "ALL_CONS_COLUMNS",
+                "ALL_TAB_COMMENTS",
+                "ALL_COL_COMMENTS",
+            ],
         },
+        "database": {
+            "vendor": "oracle",
+            "host": host,
+            "port": port,
+            "service_name": str(service_name).upper() if service_name else None,
+            "sid": str(sid).upper() if sid else None,
+        },
+        "owners": owners,
         "tables": tables,
-        "needs_review": sorted(needs_review),
-        "integrity": {
-            "fingerprint": "UNKNOWN",
-            "fingerprint_policy_version": "1.0.0",
-            "fingerprint_policy": {
-                "algorithm": "sha256",
-                "normalization": "stable_json_canonicalization",
-                "exclude": FINGERPRINT_EXCLUDES,
-            },
-        },
+        "notes": sorted(set(notes)),
+        "needs_review": needs_review,
     }
-    payload["integrity"]["fingerprint"] = stable_sha256(payload, exclude_paths=FINGERPRINT_EXCLUDES)
-    return payload

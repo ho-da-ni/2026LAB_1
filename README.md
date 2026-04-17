@@ -62,7 +62,8 @@ LAB/
 - `lab analyze`: 소스 코드와 DB 메타데이터를 분석해 IR, `run_context.json`, fingerprint를 생성한다.
 - `lab generate api`: `API.md`를 생성한다.
 - `lab generate spec`: `SPEC.md`를 생성한다.
-- `lab generate db-schema`: `DB_SCHEMA.md`를 생성한다.
+- `lab collect db`: 실DB(또는 동등 메타데이터 소스)에서 DB 수집 JSON(`db_collection.json`)을 생성한다.
+- `lab generate db-schema`: `lab collect db` 산출물을 입력으로 `db_schema.json`/`DB_SCHEMA.md`를 생성한다.
 - `lab diff`: 두 Git 기준점 사이의 변경 파일과 영향 범위를 수집한다.
 - `lab validate`: 산출물과 quality check 결과를 검증한다.
 

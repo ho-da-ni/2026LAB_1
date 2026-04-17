@@ -3,6 +3,10 @@
 ## 1) 목적
 명령어 기반 DB 메타데이터 수집 시작점을 고정하기 위해, W6 범위에서 사용할 CLI 인자 계약(Contract)을 정의한다.
 
+역할 분리 원칙:
+- `lab collect db`: 수집 단계(접속 인자 검증 + 수집 JSON 생성)
+- `lab generate db-schema`: 렌더링 단계(`db_collection.json` -> `db_schema.json`/`DB_SCHEMA.md`)
+
 ---
 
 ## 2) 명령 형태
