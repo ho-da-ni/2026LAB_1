@@ -29,6 +29,10 @@
 | W2-T08 | include/exclude 정규화 | ✅ Done | S07 경로 패턴 케이스 통과 |
 | W6-T01 | DB schema 수집/정규화/문서화 축 완성 | ✅ Done | `generate db-schema` JSON/Markdown 동시 생성 + fixture smoke test 반영 |
 | W6-T02 | DB schema 검증 규칙 강화 | ✅ Done | `validate_db` integrity/metadata/tables/source_evidence/markdown marker 규칙 반영 |
+| W6-DB-01 | DB 수집용 CLI 인자 규격 정의 | ✅ Done | `db_collect_cli_spec.md` 작성 완료 |
+| W6-DB-02 | 접속 정보 전달/마스킹 정책 정의 | ✅ Done | `db_connection_policy.md` 작성 완료 |
+| W6-DB-03 | Oracle 수집 대상/제외 범위 정의 | ✅ Done | `oracle_collection_scope.md` 작성 완료 |
+| W6-DB-04 | DB IR 스키마 정의 | ✅ Done | `db_schema.spec.md` 작성 완료 |
 | NEXT-01 | `generate db-schema` 구현 | ✅ Done | W6 산출물 기준 완료, `tests/test_w6_db_schema_smoke.py` 추가 |
 | NEXT-02 | S02/S06 CI 자동 판정기 | ⬜ Todo | 임시 repo/훅 의존 제거 필요 |
 | NEXT-03 | 샘플 repo fixture 실제 추가 | ⬜ Todo | `examples/repo-sample` 필요 |
@@ -48,6 +52,7 @@
 - LLM OFF E2E에서 정상 케이스/경고 케이스 모두 재현, strict/non-strict 정책 차이 검증 완료.
 - W3 fixture/golden/quality gate 10케이스 자동 검증 체계 확정.
 - W6 DB schema 축 완료: 정규화 강화, `DB_SCHEMA.md` Integrity 섹션 추가, `validate_db` 규칙 강화, fixture smoke test 추가.
+- W6 DB 문서 계약 고정: `db_collect_cli_spec.md`, `db_connection_policy.md`, `oracle_collection_scope.md`, `db_schema.spec.md` 추가.
 
 ## 다음 액션(우선순위)
 1. S02/S06 전용 검증을 CI 친화형 자동 판정 스크립트로 고정.

@@ -105,6 +105,17 @@ LAB/
 include/exclude 기본 제외 경로(`.git/`, `build/`, `target/`) 정책은 `docs/INCLUDE_EXCLUDE_RULES.md`를 따른다.
 검증 범위 고정용 시나리오 목록은 `docs/VALIDATION_TEST_SCENARIOS.md`를 따른다.
 
+## W6 DB 명세 문서(신규)
+
+W6 범위에서 DB 수집 계약을 고정하기 위해 아래 루트 문서를 추가/운영한다.
+
+- `db_collect_cli_spec.md`: DB 수집 CLI 인자 규격(`host/port/service_name|sid/username/password/owner/output_dir/timeout/include_comments/format`)과 필수/선택 구분, 충돌 규칙, 예시, 검증 시나리오.
+- `db_connection_policy.md`: 접속 정보 전달/마스킹 정책(환경변수 우선, 비밀번호 로그 금지, run_context 기록/비기록 범위, 실패 메시지 템플릿).
+- `oracle_collection_scope.md`: Oracle 수집 포함/제외 범위와 ALL_* 기준 뷰, owner include/exclude 규칙.
+- `db_schema.spec.md`: `db_schema.json` IR 계약(Top-level/table/column/PK/FK), stable identifier(`table_id`, `fk_id`), `evidence`, `unknown/needs_review`, 샘플 JSON.
+
+위 문서들은 W6-T01/T02의 구조/범위/보안 경계를 고정하고, 후속 Java endpoint/feature/API 병합 시 공통 참조 명세로 사용한다.
+
 ## 완료 기준 (DoD)
 
 - 프로젝트 한 줄 정의가 확정되어 있다.
