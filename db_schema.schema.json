@@ -34,7 +34,8 @@
     },
     "owners": {
       "type": "array",
-      "items": { "type": "string", "minLength": 1 }
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1
     },
     "tables": {
       "type": "array",
@@ -80,29 +81,35 @@
       }
     },
     "primary_key": {
-      "type": ["object", "null"],
-      "required": ["constraint_name", "columns", "evidence", "needs_review", "unknown"],
-      "properties": {
-        "constraint_name": { "type": "string", "minLength": 1 },
-        "columns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
-        "needs_review": { "type": "boolean" },
-        "unknown": { "type": "boolean" }
-      },
-      "additionalProperties": false
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["constraint_name", "columns", "evidence", "needs_review", "unknown"],
+          "additionalProperties": false,
+          "properties": {
+            "constraint_name": { "type": "string", "minLength": 1 },
+            "columns": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+            "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
+            "needs_review": { "type": "boolean" },
+            "unknown": { "type": "boolean" }
+          }
+        }
+      ]
     },
     "foreign_key": {
       "type": "object",
       "required": ["fk_id", "constraint_name", "columns", "referenced_owner", "referenced_table", "column_mapping", "evidence", "needs_review", "unknown"],
       "additionalProperties": false,
       "properties": {
-        "fk_id": { "type": "string", "minLength": 1 },
+        "fk_id": { "type": "string", "minLength": 1, "pattern": "^[^.]+\\.[^.]+\\.[^.]+$" },
         "constraint_name": { "type": "string", "minLength": 1 },
-        "columns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "columns": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
         "referenced_owner": { "type": "string", "minLength": 1 },
         "referenced_table": { "type": "string", "minLength": 1 },
         "column_mapping": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "type": "object",
             "required": ["local_column", "referenced_column"],
@@ -123,11 +130,11 @@
       "required": ["table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "evidence", "needs_review", "unknown"],
       "additionalProperties": false,
       "properties": {
-        "table_id": { "type": "string", "minLength": 1 },
+        "table_id": { "type": "string", "minLength": 1, "pattern": "^[^.]+\\.[^.]+$" },
         "owner": { "type": "string", "minLength": 1 },
         "table_name": { "type": "string", "minLength": 1 },
         "table_comment": { "type": ["string", "null"] },
-        "columns": { "type": "array", "items": { "$ref": "#/$defs/column" } },
+        "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/column" } },
         "primary_key": { "$ref": "#/$defs/primary_key" },
         "foreign_keys": { "type": "array", "items": { "$ref": "#/$defs/foreign_key" } },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
