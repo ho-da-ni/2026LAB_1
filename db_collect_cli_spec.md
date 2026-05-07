@@ -29,7 +29,7 @@ lab collect db [OPTIONS]
 | `--password` | string | 선택* | 없음 | 비밀번호 직접 입력(평문 전달). 보안상 비권장 |
 | `--password-stdin` | flag | 선택* | `false` | stdin으로 비밀번호 입력 |
 | `--password-env` | string | 선택* | 없음 | 지정한 환경변수에서 비밀번호 읽기 (예: `DB_PASSWORD`) |
-| `--owner` | string (반복 가능) | 선택 | 없음 | owner/schema 필터(복수 지정 가능) |
+| `--owner` | string (반복 가능) | 필수 | 없음 | owner/schema include 필터(복수 지정 가능). live 수집은 최소 1개 필요 |
 | `--output-dir` | path | 필수 | 없음 | 수집 산출물 저장 디렉터리 |
 | `--timeout` | int(초) | 선택 | `30` | DB 연결/조회 타임아웃(초), 1 이상 |
 | `--include-comments` | flag | 선택 | `false` | 컬럼/테이블 코멘트 수집 여부 |
@@ -45,12 +45,12 @@ lab collect db [OPTIONS]
 - `--host`
 - `--username`
 - `--output-dir`
+- `--owner` 1개 이상
 - 접속 식별자 1개: `--service-name` **또는** `--sid`
 - 비밀번호 입력 방식 1개: `--password` **또는** `--password-stdin` **또는** `--password-env`
 
 ### 선택
 - `--port` (기본 `1521`)
-- `--owner` (0개 이상)
 - `--timeout` (기본 `30`)
 - `--include-comments` (기본 `false`)
 - `--format` (기본/허용 `json`)
@@ -66,7 +66,7 @@ lab collect db [OPTIONS]
 5. `--format`이 `json`이 아니면 실패 (W6 범위 제한).
 6. `--timeout < 1`이면 실패.
 7. `--port`가 1~65535 범위를 벗어나면 실패.
-8. `--owner`가 빈 문자열이면 실패.
+8. `--owner`가 없거나 빈 문자열이면 실패.
 
 권장 오류 코드:
 - 인자 검증 실패: `exit 2`
@@ -114,7 +114,7 @@ printf '%s' '***' | lab collect db \
 ## 7) 검증 시나리오 (DoD)
 
 ### 7.1 정상 인자 조합 테스트
-- 조건: 필수 인자 모두 충족, 상호배타 규칙 위반 없음.
+- 조건: 필수 인자 모두 충족(`--owner` 1개 이상 포함), 상호배타 규칙 위반 없음.
 - 기대: 인자 검증 통과 후 수집 로직 시작.
 
 ### 7.2 필수 인자 누락 테스트

@@ -152,6 +152,115 @@ def test_w6_db_schema_cli_contract_maps_flags_to_command_namespace(tmp_path: Pat
     assert args.db_schema_output == str(markdown_output_path)
 
 
+
+class _FakeOracleCursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.description = []
+        self._rows = []
+
+    def execute(self, sql, binds):
+        self.connection.executed.append((sql, dict(binds)))
+        owner_values = {value for key, value in binds.items() if key.startswith("owner_")}
+        assert owner_values == {"APP"}
+        assert "dummy-password" not in sql
+        if "FROM ALL_TABLES" in sql:
+            self.description = [("OWNER",), ("TABLE_NAME",), ("TABLE_STATUS",), ("TEMPORARY",), ("NESTED",), ("IOT_TYPE",)]
+            self._rows = [("APP", "ORDERS", "VALID", "N", "NO", None)]
+        elif "FROM ALL_TAB_COLUMNS" in sql:
+            self.description = [
+                ("OWNER",),
+                ("TABLE_NAME",),
+                ("COLUMN_NAME",),
+                ("ORDINAL_POSITION",),
+                ("DATA_TYPE",),
+                ("DATA_LENGTH",),
+                ("DATA_PRECISION",),
+                ("DATA_SCALE",),
+                ("NULLABLE_FLAG",),
+                ("DATA_DEFAULT",),
+            ]
+            self._rows = [
+                ("APP", "ORDERS", "ORDER_ID", 1, "NUMBER", 22, 10, 0, "N", None),
+                ("APP", "ORDERS", "CUSTOMER_ID", 2, "NUMBER", 22, 10, 0, "N", None),
+            ]
+        elif "fk.CONSTRAINT_TYPE = 'R'" in sql:
+            self.description = [
+                ("OWNER",),
+                ("TABLE_NAME",),
+                ("CONSTRAINT_NAME",),
+                ("LOCAL_COLUMN",),
+                ("COLUMN_POSITION",),
+                ("REFERENCED_OWNER",),
+                ("REFERENCED_TABLE",),
+                ("REFERENCED_CONSTRAINT_NAME",),
+                ("REFERENCED_COLUMN",),
+                ("CONSTRAINT_STATUS",),
+                ("DELETE_RULE",),
+                ("DEFERRABLE",),
+                ("DEFERRED",),
+            ]
+            self._rows = [("APP", "ORDERS", "FK_ORDERS_CUSTOMER", "CUSTOMER_ID", 1, "APP", "CUSTOMERS", "PK_CUSTOMERS", "CUSTOMER_ID", "ENABLED", "NO ACTION", "NOT DEFERRABLE", "IMMEDIATE")]
+        elif "p.CONSTRAINT_TYPE = 'P'" in sql:
+            self.description = [
+                ("OWNER",),
+                ("TABLE_NAME",),
+                ("CONSTRAINT_NAME",),
+                ("COLUMN_NAME",),
+                ("COLUMN_POSITION",),
+                ("CONSTRAINT_STATUS",),
+                ("DEFERRABLE",),
+                ("DEFERRED",),
+            ]
+            self._rows = [("APP", "ORDERS", "PK_ORDERS", "ORDER_ID", 1, "ENABLED", "NOT DEFERRABLE", "IMMEDIATE")]
+        elif "FROM ALL_TAB_COMMENTS" in sql:
+            self.description = [("OWNER",), ("TABLE_NAME",), ("TABLE_TYPE",), ("TABLE_COMMENT",)]
+            self._rows = [("APP", "ORDERS", "TABLE", "Orders header")]
+        elif "FROM ALL_COL_COMMENTS" in sql:
+            self.description = [("OWNER",), ("TABLE_NAME",), ("COLUMN_NAME",), ("COLUMN_COMMENT",)]
+            self._rows = [("APP", "ORDERS", "ORDER_ID", "Order identifier")]
+        else:
+            raise AssertionError(f"unexpected SQL: {sql}")
+
+    def fetchall(self):
+        return self._rows
+
+    def close(self):
+        return None
+
+
+class _FakeOracleConnection:
+    def __init__(self):
+        self.executed = []
+        self.call_timeout = None
+        self.closed = False
+
+    def cursor(self):
+        return _FakeOracleCursor(self)
+
+    def close(self):
+        self.closed = True
+
+
+class _FakeOracleDriver:
+    def __init__(self):
+        self.connection = _FakeOracleConnection()
+        self.connect_kwargs = None
+
+    def makedsn(self, host, port, service_name=None, sid=None):
+        return f"{host}:{port}/{service_name or sid}"
+
+    def connect(self, **kwargs):
+        self.connect_kwargs = dict(kwargs)
+        assert kwargs["password"] == "dummy-password"
+        return self.connection
+
+
+class _FailingOracleDriver(_FakeOracleDriver):
+    def connect(self, **kwargs):
+        self.connect_kwargs = dict(kwargs)
+        raise RuntimeError("authentication failed for dummy-password")
+
 def test_w6_collect_db_cli_contract_maps_flags_to_command_namespace(tmp_path: Path) -> None:
     output_dir = tmp_path / "collect"
     parser = build_parser()
@@ -196,7 +305,11 @@ def test_w6_collect_db_cli_contract_maps_flags_to_command_namespace(tmp_path: Pa
 
 
 def test_w6_collect_db_and_generate_db_schema_role_split(tmp_path: Path, monkeypatch) -> None:
+    from lab.db import oracle_collector
+
     run_dir = tmp_path / "run"
+    fake_driver = _FakeOracleDriver()
+    monkeypatch.setattr(oracle_collector, "load_oracle_driver", lambda: fake_driver)
     monkeypatch.setenv("DB_PASSWORD", "dummy-password")
 
     assert (
@@ -216,6 +329,7 @@ def test_w6_collect_db_and_generate_db_schema_role_split(tmp_path: Path, monkeyp
                 "APP",
                 "--output-dir",
                 str(run_dir),
+                "--include-comments",
                 "--format",
                 "json",
             ]
@@ -227,7 +341,18 @@ def test_w6_collect_db_and_generate_db_schema_role_split(tmp_path: Path, monkeyp
     assert collected_path.exists()
     collected = json.loads(collected_path.read_text(encoding="utf-8"))
     assert collected["metadata"]["source_type"] == "oracle_live_collection"
+    assert collected["metadata"]["collection_mode"] == "live_query"
+    assert collected["metadata"]["connection"]["password_mode"] == "env"
+    assert collected["metadata"]["connection"]["password_env_name"] == "DB_PASSWORD"
+    assert collected["metadata"]["connection"]["owner_filters"] == ["APP"]
     assert "dummy-password" not in json.dumps(collected)
+    assert "_".join(["placeholder", "no", "live", "query"]) not in json.dumps(collected)
+    assert collected["raw_metadata"]["tables"][0]["table_name"] == "ORDERS"
+    assert collected["raw_metadata"]["columns"][0]["column_name"] == "ORDER_ID"
+    assert collected["raw_metadata"]["primary_keys"][0]["constraint_name"] == "PK_ORDERS"
+    assert collected["raw_metadata"]["foreign_keys"][0]["constraint_name"] == "FK_ORDERS_CUSTOMER"
+    assert collected["raw_metadata"]["table_comments"][0]["table_comment"] == "Orders header"
+    assert collected["raw_metadata"]["column_comments"][0]["column_comment"] == "Order identifier"
 
     assert main(["generate", "db-schema", "--input", str(collected_path), "--json-output", str(run_dir / "db_schema.json"), "--output", str(run_dir / "DB_SCHEMA.md")]) == 0
 
@@ -235,4 +360,177 @@ def test_w6_collect_db_and_generate_db_schema_role_split(tmp_path: Path, monkeyp
     assert generated["schema_version"] == "w6.db_schema.v1"
     assert generated["database"]["service_name"] == "ORCLPDB1"
     assert generated["owners"] == ["APP"]
-    assert generated["needs_review"] is True
+    assert generated["tables"][0]["table_id"] == "APP.ORDERS"
+    assert generated["tables"][0]["primary_key"]["columns"] == ["ORDER_ID"]
+    assert generated["tables"][0]["foreign_keys"][0]["referenced_table"] == "CUSTOMERS"
+    assert generated["needs_review"] is False
+
+
+def test_w6_collect_db_connection_failure_is_fail_fast_and_secret_safe(tmp_path: Path, monkeypatch, capsys) -> None:
+    from lab.db import oracle_collector
+
+    fake_driver = _FailingOracleDriver()
+    monkeypatch.setattr(oracle_collector, "load_oracle_driver", lambda: fake_driver)
+    monkeypatch.setenv("DB_PASSWORD", "dummy-password")
+
+    exit_code = main(
+        [
+            "collect",
+            "db",
+            "--host",
+            "db.internal.local",
+            "--service-name",
+            "ORCLPDB1",
+            "--username",
+            "app_reader",
+            "--password-env",
+            "DB_PASSWORD",
+            "--owner",
+            "APP",
+            "--output-dir",
+            str(tmp_path / "run"),
+            "--format",
+            "json",
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert not (tmp_path / "run" / "db_collection.json").exists()
+    assert "DB_CONN_FAILED" in captured.err
+    assert "dummy-password" not in captured.err
+
+
+def test_w6_oracle_raw_mapper_handles_composite_keys_and_schema_contract() -> None:
+    from lab.db.normalizer import normalize
+    from lab.db.oracle_collector import ORACLE_DICTIONARY_VIEWS, _assemble_tables
+    from lab.quality.validate_db import validate_db_schema_json
+
+    raw = {
+        "tables": [("APP", "ORDER_LINES", "VALID", "N", "NO", None)],
+        "columns": [
+            ("APP", "ORDER_LINES", "ORDER_ID", 1, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "LINE_NO", 2, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "PRODUCT_ID", 3, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "PRODUCT_VERSION", 4, "NUMBER", 22, 10, 0, "N", None),
+        ],
+        "primary_keys": [
+            ("APP", "ORDER_LINES", "PK_ORDER_LINES", "ORDER_ID", 1, "ENABLED", "NOT DEFERRABLE", "IMMEDIATE"),
+            ("APP", "ORDER_LINES", "PK_ORDER_LINES", "LINE_NO", 2, "ENABLED", "NOT DEFERRABLE", "IMMEDIATE"),
+        ],
+        "foreign_keys": [
+            ("APP", "ORDER_LINES", "FK_ORDER_LINES_PRODUCT", "PRODUCT_ID", 1, "APP", "PRODUCTS", "PK_PRODUCTS", "PRODUCT_ID", "ENABLED", "NO ACTION", "NOT DEFERRABLE", "IMMEDIATE"),
+            ("APP", "ORDER_LINES", "FK_ORDER_LINES_PRODUCT", "PRODUCT_VERSION", 2, "APP", "PRODUCTS", "PK_PRODUCTS", "PRODUCT_VERSION", "ENABLED", "NO ACTION", "NOT DEFERRABLE", "IMMEDIATE"),
+        ],
+        "table_comments": [("APP", "ORDER_LINES", "TABLE", "Order line items")],
+        "column_comments": [("APP", "ORDER_LINES", "PRODUCT_VERSION", "Product version")],
+    }
+    descriptions = {
+        "tables": [("OWNER",), ("TABLE_NAME",), ("TABLE_STATUS",), ("TEMPORARY",), ("NESTED",), ("IOT_TYPE",)],
+        "columns": [
+            ("OWNER",),
+            ("TABLE_NAME",),
+            ("COLUMN_NAME",),
+            ("ORDINAL_POSITION",),
+            ("DATA_TYPE",),
+            ("DATA_LENGTH",),
+            ("DATA_PRECISION",),
+            ("DATA_SCALE",),
+            ("NULLABLE_FLAG",),
+            ("DATA_DEFAULT",),
+        ],
+        "primary_keys": [("OWNER",), ("TABLE_NAME",), ("CONSTRAINT_NAME",), ("COLUMN_NAME",), ("COLUMN_POSITION",), ("CONSTRAINT_STATUS",), ("DEFERRABLE",), ("DEFERRED",)],
+        "foreign_keys": [
+            ("OWNER",),
+            ("TABLE_NAME",),
+            ("CONSTRAINT_NAME",),
+            ("LOCAL_COLUMN",),
+            ("COLUMN_POSITION",),
+            ("REFERENCED_OWNER",),
+            ("REFERENCED_TABLE",),
+            ("REFERENCED_CONSTRAINT_NAME",),
+            ("REFERENCED_COLUMN",),
+            ("CONSTRAINT_STATUS",),
+            ("DELETE_RULE",),
+            ("DEFERRABLE",),
+            ("DEFERRED",),
+        ],
+        "table_comments": [("OWNER",), ("TABLE_NAME",), ("TABLE_TYPE",), ("TABLE_COMMENT",)],
+        "column_comments": [("OWNER",), ("TABLE_NAME",), ("COLUMN_NAME",), ("COLUMN_COMMENT",)],
+    }
+    raw_rows = {
+        name: [{column[0].lower(): value for column, value in zip(descriptions[name], row)} for row in rows]
+        for name, rows in raw.items()
+    }
+
+    tables, notes = _assemble_tables(raw_rows, include_comments=True)
+
+    assert notes == []
+    table = tables[0]
+    assert table["table_id"] == "APP.ORDER_LINES"
+    assert [column["name"] for column in table["columns"]] == ["ORDER_ID", "LINE_NO", "PRODUCT_ID", "PRODUCT_VERSION"]
+    assert table["primary_key"]["columns"] == ["ORDER_ID", "LINE_NO"]
+    fk = table["foreign_keys"][0]
+    assert fk["fk_id"] == "APP.ORDER_LINES.FK_ORDER_LINES_PRODUCT"
+    assert fk["columns"] == ["PRODUCT_ID", "PRODUCT_VERSION"]
+    assert fk["column_mapping"] == [
+        {"local_column": "PRODUCT_ID", "referenced_column": "PRODUCT_ID"},
+        {"local_column": "PRODUCT_VERSION", "referenced_column": "PRODUCT_VERSION"},
+    ]
+    assert table["table_comment"] == "Order line items"
+    assert table["columns"][3]["comment"] == "Product version"
+    assert table["needs_review"] is False
+    assert table["unknown"] is False
+    assert table["evidence"]
+    assert all(column["evidence"] for column in table["columns"])
+    assert table["primary_key"]["evidence"]
+    assert fk["evidence"]
+
+    db_schema = normalize(
+        {
+            "metadata": {
+                "source_type": "oracle_live_collection",
+                "collected_at_utc": "2026-05-07T00:00:00Z",
+                "dictionary_views": ORACLE_DICTIONARY_VIEWS,
+                "connection": {
+                    "host": "db.internal.local",
+                    "port": 1521,
+                    "target_mode": "service_name",
+                    "target": "ORCLPDB1",
+                    "owner_filters": ["APP"],
+                },
+            },
+            "tables": tables,
+            "notes": notes,
+        }
+    )
+    findings = validate_db_schema_json(db_schema)
+    assert [finding for finding in findings if finding["level"] == "ERROR"] == []
+    assert db_schema["tables"][0]["columns"][0]["ordinal_position"] == 1
+    assert db_schema["tables"][0]["columns"][3]["ordinal_position"] == 4
+
+
+def test_w6_oracle_mapper_marks_unknown_when_column_metadata_is_incomplete() -> None:
+    from lab.db.oracle_collector import _assemble_tables
+
+    tables, notes = _assemble_tables(
+        {
+            "tables": [{"owner": "APP", "table_name": "BROKEN", "table_status": "VALID"}],
+            "columns": [{"owner": "APP", "table_name": "BROKEN", "column_name": "", "ordinal_position": None, "data_type": None, "nullable_flag": "?"}],
+            "primary_keys": [],
+            "foreign_keys": [],
+            "table_comments": [],
+            "column_comments": [],
+        },
+        include_comments=False,
+    )
+
+    assert notes == []
+    column = tables[0]["columns"][0]
+    assert column["name"] == "UNKNOWN"
+    assert column["ordinal_position"] == 1
+    assert column["needs_review"] is True
+    assert column["unknown"] is True
+    assert column["evidence"]
+    assert tables[0]["needs_review"] is True
+    assert tables[0]["unknown"] is True

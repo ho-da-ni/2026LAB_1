@@ -1,4 +1,4 @@
-"""Collect DB metadata command (W6 contract placeholder)."""
+"""Collect live Oracle DB metadata."""
 
 from __future__ import annotations
 
@@ -7,8 +7,16 @@ import os
 import sys
 from pathlib import Path
 
-from lab.exit_codes import EXIT_INPUT_INVALID, EXIT_OK, EXIT_OUTPUT_WRITE_FAILED
-from lab.shared_utils import atomic_write_json, utc_now_iso
+from lab.db.oracle_collector import (
+    DEFAULT_SYSTEM_OWNERS,
+    OracleCollectionError,
+    OracleConnectionConfig,
+    OracleDependencyError,
+    collect_oracle_metadata,
+    normalize_owner_list,
+)
+from lab.exit_codes import EXIT_DB_CONNECTION_FAILED, EXIT_INPUT_INVALID, EXIT_OK, EXIT_OUTPUT_WRITE_FAILED
+from lab.shared_utils import atomic_write_json
 
 
 def _resolve_password_mode(args: argparse.Namespace) -> tuple[str | None, str | None]:
@@ -19,9 +27,23 @@ def _resolve_password_mode(args: argparse.Namespace) -> tuple[str | None, str | 
     if args.password_env:
         value = os.getenv(args.password_env)
         if value is None:
-            return None, f"environment variable not found: {args.password_env}"
+            return None, f"[DB_CONN_SECRET_MISSING] Password environment variable '{args.password_env}' is not set. Provide --password-env with a valid variable or use --password-stdin."
         return "env", value
     return None, "one password input mode is required"
+
+
+def _safe_target(args: argparse.Namespace) -> tuple[str, str]:
+    if args.service_name:
+        return "service_name", args.service_name
+    return "sid", args.sid
+
+
+def _print_connection_failure(args: argparse.Namespace, message: str) -> None:
+    target_mode, target = _safe_target(args)
+    print(
+        f"[DB_CONN_FAILED] {message} host={args.host} port={args.port} {target_mode}={target} username={args.username}. No secret values were logged.",
+        file=sys.stderr,
+    )
 
 
 def run(args: argparse.Namespace) -> int:
@@ -34,8 +56,10 @@ def run(args: argparse.Namespace) -> int:
     if args.db_collect_format != "json":
         print("[ERROR] --format currently supports only 'json'", file=sys.stderr)
         return EXIT_INPUT_INVALID
-    if any(owner.strip() == "" for owner in args.owner):
-        print("[ERROR] --owner must not be empty", file=sys.stderr)
+
+    owners = normalize_owner_list(args.owner)
+    if len(owners) == 0:
+        print("[ERROR] at least one --owner is required for live Oracle collection", file=sys.stderr)
         return EXIT_INPUT_INVALID
 
     password_mode, password_value_or_error = _resolve_password_mode(args)
@@ -46,31 +70,30 @@ def run(args: argparse.Namespace) -> int:
         print("[ERROR] password input is empty", file=sys.stderr)
         return EXIT_INPUT_INVALID
 
-    connect_target = args.service_name if args.service_name else args.sid
-    connect_mode = "service_name" if args.service_name else "sid"
+    config = OracleConnectionConfig(
+        host=args.host,
+        port=args.port,
+        service_name=args.service_name,
+        sid=args.sid,
+        username=args.username,
+        password=password_value_or_error,
+        password_mode=password_mode,
+        password_env_name=args.password_env if password_mode == "env" else None,
+        owners=owners,
+        output_dir=str(args.output_dir),
+        timeout=args.timeout,
+        include_comments=bool(args.include_comments),
+        system_owners=DEFAULT_SYSTEM_OWNERS,
+    )
 
-    payload = {
-        "metadata": {
-            "source_type": "oracle_live_collection",
-            "source_path": f"oracle://{args.host}:{args.port}/{connect_target}",
-            "snapshot_id": "UNKNOWN",
-            "collected_at_utc": utc_now_iso(),
-            "collection_mode": "placeholder_no_live_query",
-            "connection": {
-                "host": args.host,
-                "port": args.port,
-                "target_mode": connect_mode,
-                "target": connect_target,
-                "username": args.username,
-                "owner_filters": sorted(args.owner),
-                "timeout_seconds": args.timeout,
-                "include_comments": bool(args.include_comments),
-                "password_mode": password_mode,
-            },
-        },
-        "tables": [],
-        "needs_review": ["needs_review.db_collection.query_integration_pending"],
-    }
+    try:
+        payload = collect_oracle_metadata(config)
+    except OracleDependencyError as exc:
+        _print_connection_failure(args, str(exc))
+        return EXIT_DB_CONNECTION_FAILED
+    except OracleCollectionError as exc:
+        _print_connection_failure(args, str(exc))
+        return EXIT_DB_CONNECTION_FAILED
 
     output_dir = Path(args.output_dir)
     output_path = output_dir / "db_collection.json"
