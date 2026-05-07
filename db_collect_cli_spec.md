@@ -105,6 +105,7 @@ printf '%s' '***' | lab collect db \
   --sid ORCL \
   --username system \
   --password-stdin \
+  --owner APP \
   --output-dir ./artifacts/db/run-002 \
   --format json
 ```

@@ -66,6 +66,8 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
 
     markdown = md_out.read_text(encoding="utf-8")
     assert "# DB Schema Overview" in markdown
+    assert "## Integrity" in markdown
+    assert "run_context.json and changed_files.json fingerprints" in markdown
     assert "## Source" in markdown
     assert "## Database" in markdown
     assert "## Owners" in markdown
