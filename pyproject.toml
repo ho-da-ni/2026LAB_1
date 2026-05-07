@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
+[project.optional-dependencies]
+oracle = ["oracledb>=2"]
+
 [project.scripts]
 lab = "lab.cli:main"
 

@@ -42,4 +42,4 @@ For LAB/W-task work, `status.md` must always show:
 - what Codex should do next if the session stops here
 
 ## Current operational priority
-- The next implementation priority is real DB collector work: replace the current `src/lab/commands/collect_db.py` placeholder with live Oracle metadata collection according to `db_collect_cli_spec.md`, `db_connection_policy.md`, `oracle_collection_scope.md`, and `db_schema.spec.md`.
+- The live Oracle collector path is implemented in `src/lab/commands/collect_db.py` and `src/lab/db/oracle_collector.py`; the next priority is validating it against a real Oracle connection and then tightening `generate db-schema`/`validate_db` coverage for live `db_collection.json` payloads.
