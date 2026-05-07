@@ -1,4 +1,4 @@
-# STATUS.md
+# status.md
 
 ## Source of Truth: Task Board
 
@@ -36,15 +36,18 @@
 | NEXT-01 | `generate db-schema` 구현 | ✅ Done | W6 산출물 기준 완료, `tests/test_w6_db_schema_smoke.py` 추가 |
 | NEXT-02 | S02/S06 CI 자동 판정기 | ⬜ Todo | 임시 repo/훅 의존 제거 필요 |
 | NEXT-03 | 샘플 repo fixture 실제 추가 | ⬜ Todo | `examples/repo-sample` 필요 |
+| OPS-01 | Codex 운영 규칙 고정 | ✅ Done | 루트 `AGENTS.md` 생성, README `status.md` 표기 통일 |
+| NEXT-04 | 실DB collector 구현 | ⬜ Todo | `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체 필요 |
 
 ---
 
 ## 현재 목표
-- 검증 시나리오(S01~S08) 재현성을 유지하면서, W6 DB schema 축 완료 상태를 기준으로 CI 자동 판정/샘플 repo 보강을 진행한다.
+- Codex 운영 규칙을 루트 `AGENTS.md`와 `status.md` 기준으로 고정한 상태에서, 다음 0순위 구현은 `src/lab/commands/collect_db.py`의 실DB collector 전환이다.
 
 ## 진행 중(핵심)
 - `lab validate`의 리포트 포맷/스키마 세부 규칙 고도화(단일 CI fail-fast 기준 정교화).
-- STATUS 검증 명령 기록 정책(세션 누적 방식) 단순화.
+- `status.md` 검증 명령 기록 정책(세션 누적 방식) 단순화.
+- 실DB collector 구현 설계: 현재 `src/lab/commands/collect_db.py`는 접속 인자 검증과 placeholder JSON 생성만 수행한다.
 - S02/S06 전용 CI 자동 판정 스크립트 설계.
 
 ## 완료 하이라이트
@@ -53,12 +56,14 @@
 - W3 fixture/golden/quality gate 10케이스 자동 검증 체계 확정.
 - W6 DB schema 축 완료: 정규화 강화, `DB_SCHEMA.md` Integrity 섹션 추가, `validate_db` 규칙 강화, fixture smoke test 추가.
 - W6 DB 문서 계약 고정: `db_collect_cli_spec.md`, `db_connection_policy.md`, `oracle_collection_scope.md`, `db_schema.spec.md` 추가.
+- Codex 운영 규칙 고정: 루트 `AGENTS.md`에 `status.md` 작업 시작/종료 갱신 의무와 완료 조건을 명시하고, README 표기를 실제 파일명 `status.md`로 통일.
 
 ## 다음 액션(우선순위)
-1. S02/S06 전용 검증을 CI 친화형 자동 판정 스크립트로 고정.
-2. `examples/repo-sample` fixture 보강으로 문서/실행 환경 정합성 확보.
-3. STATUS 검증 로그 누적 규칙(요약 템플릿) 확정.
-4. W6 validate rule 중 WARN/ERROR 경계(`source_evidence`) 정책 확정.
+1. 실DB collector 구현: `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체하고 `db_collect_cli_spec.md`/`db_connection_policy.md`/`oracle_collection_scope.md` 계약을 반영.
+2. S02/S06 전용 검증을 CI 친화형 자동 판정 스크립트로 고정.
+3. `examples/repo-sample` fixture 보강으로 문서/실행 환경 정합성 확보.
+4. `status.md` 검증 로그 누적 규칙(요약 템플릿) 확정.
+5. W6 validate rule 중 WARN/ERROR 경계(`source_evidence`) 정책 확정.
 
 ## 최근 검증 요약
 - `PYTHONPATH=src pytest -q` 다회 실행 기준 최종 16 passed 확인.
@@ -67,6 +72,8 @@
 - `PYTHONPATH=src pytest -q tests/test_w4_docs_and_quality.py::test_w4_generate_db_schema_outputs_json_and_markdown tests/test_w4_docs_and_quality.py::test_w4_validate_db_schema_markdown_sections_and_unknown_policy tests/test_w6_db_schema_smoke.py` 실행 결과 4 passed.
 - `PYTHONPATH=src python -m lab generate db-schema --help`로 `--input/--json-output/--output` 계약 확인.
 - `PYTHONPATH=src python -m lab generate db-schema --input tests/fixtures/db/sample_db_input.json --json-output <tmp>/db_schema.json --output <tmp>/DB_SCHEMA.md` smoke 실행으로 JSON/Markdown 동시 생성 확인.
+- `rg -n 'STATUS[.]md|STATUS[[:space:]]검증' README.md status.md AGENTS.md share_pack_mid/README.md docs/VALIDATION_TEST_SCENARIOS.md docs/QUALITY_RULES.md || true` 실행 결과 README/status 운영 문서 범위에서 대문자 파일명 표기 없음 확인.
+- `PYTHONPATH=src pytest -q` 실행 결과 32 passed 확인.
 
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload 유지, fingerprint 계산에서는 제외.
@@ -77,3 +84,14 @@
 - 리스크: quality gate 세부 스키마/리포트 규칙은 추가 고도화 필요.
 - 리스크: 일부 검증이 임시 브랜치/임시 repo 생성에 의존.
 - 리스크: DB 전용 validate 실행 시에도 `run_context.json`, `changed_files.json` 필수 요구로 UX 제약 존재.
+- 리스크: `src/lab/commands/collect_db.py`는 아직 `collection_mode=placeholder_no_live_query`와 빈 `tables`를 쓰는 placeholder이며, 실DB 접속/Oracle 메타데이터 조회가 미구현 상태.
+
+
+#### 2026-05-07 10:10
+- Scope: OPS-01 Codex 운영 규칙 고정 및 `status.md` 파일명/운영 규칙 정리.
+- Completed: 루트 `AGENTS.md`를 생성해 작업 시작 전/종료 전 `status.md` 읽기/갱신 의무와 Codex 작업 완료 조건을 명시함; README의 `status.md` 표기를 실제 파일명 `status.md`로 통일함; 다음 작업을 실DB collector 구현으로 재정렬함.
+- Files changed: `AGENTS.md`, `README.md`, `status.md`.
+- Validation: `rg -n 'STATUS[.]md|STATUS[[:space:]]검증' README.md status.md AGENTS.md share_pack_mid/README.md docs/VALIDATION_TEST_SCENARIOS.md docs/QUALITY_RULES.md || true` PASS (대문자 파일명 표기 없음); `PYTHONPATH=src pytest -q` PASS (32 passed).
+- Status: PASS (문서/운영 규칙 반영 및 전체 테스트 통과; repo runnable).
+- Risks / blockers: `src/lab/commands/collect_db.py`는 아직 placeholder로, 실DB 접속/Oracle 메타데이터 조회가 미구현 상태.
+- Next actions: 다음 세션에서 실DB collector 구현을 시작하고, `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체.
