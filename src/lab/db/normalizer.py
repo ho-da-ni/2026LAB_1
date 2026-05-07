@@ -225,6 +225,14 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
     owners = sorted({str(owner).upper() for owner in owners_raw if str(owner).strip()}) if isinstance(owners_raw, list) else []
 
     tables_raw = raw.get("tables") if isinstance(raw.get("tables"), list) else []
+    if not owners:
+        owners = sorted(
+            {
+                str(table.get("owner", table.get("schema_name", table.get("schema", "")))).upper()
+                for table in tables_raw
+                if isinstance(table, dict) and str(table.get("owner", table.get("schema_name", table.get("schema", "")))).strip()
+            }
+        )
     tables = [_normalize_table(table) for table in tables_raw]
     tables = sorted(tables, key=lambda t: t.get("table_id", "UNKNOWN"))
 

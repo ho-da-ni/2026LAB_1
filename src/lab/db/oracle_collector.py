@@ -258,20 +258,196 @@ def _fetch_rows(connection: Any, sql: str, binds: dict[str, str]) -> list[dict[s
             close()
 
 
+def _upper(value: Any, default: str = "UNKNOWN") -> str:
+    text = str(value).strip() if value is not None else ""
+    return text.upper() if text else default
+
+
+def _int_or_none(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, Decimal):
+        return int(value) if value == value.to_integral_value() else None
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def _positive_position(value: Any, fallback: int) -> tuple[int, bool]:
+    parsed = _int_or_none(value)
+    if parsed is None or parsed < 1:
+        return fallback, True
+    return parsed, False
+
+
 def _evidence(source_view: str, row: dict[str, Any], *, column_key: str | None = None) -> dict[str, Any]:
     column_name = row.get(column_key) if column_key is not None else row.get("column_name")
     return {
         "source_view": source_view,
-        "owner": row.get("owner", "UNKNOWN"),
-        "object_name": row.get("table_name", "UNKNOWN"),
-        "column_name": column_name,
-        "constraint_name": row.get("constraint_name"),
+        "owner": _upper(row.get("owner")),
+        "object_name": _upper(row.get("table_name")),
+        "column_name": _upper(column_name) if column_name is not None else None,
+        "constraint_name": _upper(row.get("constraint_name")) if row.get("constraint_name") is not None else None,
         "row_ref": dict(row),
     }
 
 
+def _missing_evidence(source_view: str, *, owner: str, table_name: str, detail: str, column_name: str | None = None, constraint_name: str | None = None) -> dict[str, Any]:
+    return {
+        "source_view": source_view,
+        "owner": owner,
+        "object_name": table_name,
+        "column_name": column_name,
+        "constraint_name": constraint_name,
+        "row_ref": {"status": "MISSING_METADATA", "detail": detail},
+    }
+
+
 def _table_key(row: dict[str, Any]) -> tuple[str, str]:
-    return str(row.get("owner", "UNKNOWN")).upper(), str(row.get("table_name", "UNKNOWN")).upper()
+    return _upper(row.get("owner")), _upper(row.get("table_name"))
+
+
+def _constraint_name(row: dict[str, Any]) -> str:
+    return _upper(row.get("constraint_name"))
+
+
+def _table_id(owner: str, table_name: str) -> str:
+    return f"{owner}.{table_name}"
+
+
+def _fk_id(owner: str, table_name: str, constraint_name: str) -> str:
+    return f"{owner}.{table_name}.{constraint_name}"
+
+
+def map_table(row: dict[str, Any]) -> dict[str, Any]:
+    owner, table_name = _table_key(row)
+    unknown = owner == "UNKNOWN" or table_name == "UNKNOWN"
+    return {
+        "table_id": _table_id(owner, table_name),
+        "owner": owner,
+        "table_name": table_name,
+        "table_comment": None,
+        "columns": [],
+        "primary_key": None,
+        "foreign_keys": [],
+        "evidence": [_evidence("ALL_TABLES", row)],
+        "needs_review": unknown,
+        "unknown": unknown,
+    }
+
+
+def map_column(row: dict[str, Any], *, ordinal_fallback: int) -> dict[str, Any]:
+    owner, table_name = _table_key(row)
+    name = _upper(row.get("column_name"))
+    data_type = _upper(row.get("data_type"))
+    ordinal_position, ordinal_unknown = _positive_position(row.get("ordinal_position"), ordinal_fallback)
+    nullable_flag = _upper(row.get("nullable_flag"), default="Y")
+    nullable_unknown = nullable_flag not in {"Y", "N"}
+    unknown = name == "UNKNOWN" or data_type == "UNKNOWN" or ordinal_unknown or nullable_unknown
+    return {
+        "name": name,
+        "ordinal_position": ordinal_position,
+        "data_type": data_type,
+        "data_length": _int_or_none(row.get("data_length")),
+        "data_precision": _int_or_none(row.get("data_precision")),
+        "data_scale": _int_or_none(row.get("data_scale")),
+        "nullable": nullable_flag == "Y" if not nullable_unknown else True,
+        "default": row.get("data_default"),
+        "comment": None,
+        "evidence": [_evidence("ALL_TAB_COLUMNS", row)],
+        "needs_review": unknown,
+        "unknown": unknown,
+        "_owner": owner,
+        "_table_name": table_name,
+    }
+
+
+def _schema_column_from_missing(owner: str, table_name: str) -> dict[str, Any]:
+    return {
+        "name": "UNKNOWN",
+        "ordinal_position": 1,
+        "data_type": "UNKNOWN",
+        "data_length": None,
+        "data_precision": None,
+        "data_scale": None,
+        "nullable": True,
+        "default": None,
+        "comment": None,
+        "evidence": [_missing_evidence("ALL_TAB_COLUMNS", owner=owner, table_name=table_name, detail="No column rows were collected for this table.")],
+        "needs_review": True,
+        "unknown": True,
+    }
+
+
+def assemble_primary_key(rows: list[dict[str, Any]], *, owner: str, table_name: str, constraint_name: str) -> dict[str, Any]:
+    ordered = sorted(rows, key=lambda item: (_positive_position(item.get("column_position"), 999999)[0], _upper(item.get("column_name"))))
+    columns = [_upper(row.get("column_name")) for row in ordered]
+    if not columns:
+        columns = ["UNKNOWN"]
+    evidence = []
+    for row in ordered:
+        evidence.append(_evidence("ALL_CONSTRAINTS", row))
+        evidence.append(_evidence("ALL_CONS_COLUMNS", row))
+    if not evidence:
+        evidence.append(_missing_evidence("ALL_CONSTRAINTS", owner=owner, table_name=table_name, constraint_name=constraint_name, detail="PK constraint had no column rows."))
+    unknown = constraint_name == "UNKNOWN" or "UNKNOWN" in columns
+    return {
+        "constraint_name": constraint_name,
+        "columns": columns,
+        "evidence": evidence,
+        "needs_review": unknown,
+        "unknown": unknown,
+    }
+
+
+def assemble_foreign_key(rows: list[dict[str, Any]], *, owner: str, table_name: str, constraint_name: str) -> dict[str, Any]:
+    ordered = sorted(rows, key=lambda item: (_positive_position(item.get("column_position"), 999999)[0], _upper(item.get("local_column"))))
+    local_columns = [_upper(row.get("local_column")) for row in ordered] or ["UNKNOWN"]
+    column_mapping = [
+        {
+            "local_column": _upper(row.get("local_column")),
+            "referenced_column": _upper(row.get("referenced_column")),
+        }
+        for row in ordered
+    ] or [{"local_column": "UNKNOWN", "referenced_column": "UNKNOWN"}]
+    evidence = []
+    for row in ordered:
+        evidence.append(_evidence("ALL_CONSTRAINTS", row, column_key="local_column"))
+        evidence.append(_evidence("ALL_CONS_COLUMNS", row, column_key="local_column"))
+    if not evidence:
+        evidence.append(_missing_evidence("ALL_CONSTRAINTS", owner=owner, table_name=table_name, constraint_name=constraint_name, detail="FK constraint had no column rows."))
+    referenced_owner = _upper(ordered[0].get("referenced_owner")) if ordered else "UNKNOWN"
+    referenced_table = _upper(ordered[0].get("referenced_table")) if ordered else "UNKNOWN"
+    unknown = constraint_name == "UNKNOWN" or referenced_owner == "UNKNOWN" or referenced_table == "UNKNOWN" or "UNKNOWN" in local_columns or any(
+        item["referenced_column"] == "UNKNOWN" for item in column_mapping
+    )
+    return {
+        "fk_id": _fk_id(owner, table_name, constraint_name),
+        "constraint_name": constraint_name,
+        "columns": local_columns,
+        "referenced_owner": referenced_owner,
+        "referenced_table": referenced_table,
+        "column_mapping": column_mapping,
+        "evidence": evidence,
+        "needs_review": unknown,
+        "unknown": unknown,
+    }
+
+
+def apply_table_comment(table: dict[str, Any], row: dict[str, Any]) -> None:
+    table["table_comment"] = row.get("table_comment")
+    table["evidence"].append(_evidence("ALL_TAB_COMMENTS", row))
+
+
+def apply_column_comment(column: dict[str, Any], row: dict[str, Any]) -> None:
+    column["comment"] = row.get("column_comment")
+    column["evidence"].append(_evidence("ALL_COL_COMMENTS", row))
+
+
+def _strip_internal_column_keys(column: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in column.items() if not key.startswith("_")}
 
 
 def _assemble_tables(raw: dict[str, list[dict[str, Any]]], *, include_comments: bool) -> tuple[list[dict[str, Any]], list[str]]:
@@ -280,108 +456,43 @@ def _assemble_tables(raw: dict[str, list[dict[str, Any]]], *, include_comments: 
 
     for row in raw["tables"]:
         owner, table_name = _table_key(row)
-        tables[(owner, table_name)] = {
-            "owner": owner,
-            "table_name": table_name,
-            "table_comment": None,
-            "columns": [],
-            "primary_key": None,
-            "foreign_keys": [],
-            "evidence": [_evidence("ALL_TABLES", row)],
-            "needs_review": False,
-            "unknown": False,
-        }
+        tables[(owner, table_name)] = map_table(row)
 
+    ordinal_fallbacks: dict[tuple[str, str], int] = {}
     for row in raw["columns"]:
         owner, table_name = _table_key(row)
         table = tables.get((owner, table_name))
         if table is None:
             notes.append(f"Skipped column metadata for non-table object {owner}.{table_name}.")
             continue
-        nullable_flag = str(row.get("nullable_flag", "Y")).upper()
-        unknown = row.get("ordinal_position") is None or row.get("data_type") in {None, ""} or nullable_flag not in {"Y", "N"}
-        table["columns"].append(
-            {
-                "name": str(row.get("column_name", "UNKNOWN")).upper(),
-                "ordinal_position": row.get("ordinal_position"),
-                "data_type": str(row.get("data_type", "UNKNOWN")).upper(),
-                "data_length": row.get("data_length"),
-                "data_precision": row.get("data_precision"),
-                "data_scale": row.get("data_scale"),
-                "nullable": nullable_flag == "Y",
-                "default": row.get("data_default"),
-                "comment": None,
-                "evidence": [_evidence("ALL_TAB_COLUMNS", row)],
-                "needs_review": unknown,
-                "unknown": unknown,
-            }
-        )
+        fallback = ordinal_fallbacks.get((owner, table_name), len(table["columns"]) + 1)
+        column = map_column(row, ordinal_fallback=fallback)
+        ordinal_fallbacks[(owner, table_name)] = max(fallback + 1, int(column["ordinal_position"]) + 1)
+        table["columns"].append(column)
 
     pk_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for row in raw["primary_keys"]:
         owner, table_name = _table_key(row)
-        constraint_name = str(row.get("constraint_name", "UNKNOWN")).upper()
-        pk_groups.setdefault((owner, table_name, constraint_name), []).append(row)
+        pk_groups.setdefault((owner, table_name, _constraint_name(row)), []).append(row)
 
     for (owner, table_name, constraint_name), rows in sorted(pk_groups.items()):
         table = tables.get((owner, table_name))
         if table is None:
             notes.append(f"Skipped PK metadata for non-table object {owner}.{table_name}.{constraint_name}.")
             continue
-        ordered = sorted(rows, key=lambda item: (item.get("column_position") or 0, str(item.get("column_name", ""))))
-        columns = [str(row.get("column_name", "UNKNOWN")).upper() for row in ordered]
-        evidence = []
-        for row in ordered:
-            evidence.append(_evidence("ALL_CONSTRAINTS", row))
-            evidence.append(_evidence("ALL_CONS_COLUMNS", row))
-        table["primary_key"] = {
-            "constraint_name": constraint_name,
-            "columns": columns,
-            "evidence": evidence,
-            "needs_review": not columns,
-            "unknown": not columns,
-        }
+        table["primary_key"] = assemble_primary_key(rows, owner=owner, table_name=table_name, constraint_name=constraint_name)
 
     fk_groups: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for row in raw["foreign_keys"]:
         owner, table_name = _table_key(row)
-        constraint_name = str(row.get("constraint_name", "UNKNOWN")).upper()
-        fk_groups.setdefault((owner, table_name, constraint_name), []).append(row)
+        fk_groups.setdefault((owner, table_name, _constraint_name(row)), []).append(row)
 
     for (owner, table_name, constraint_name), rows in sorted(fk_groups.items()):
         table = tables.get((owner, table_name))
         if table is None:
             notes.append(f"Skipped FK metadata for non-table object {owner}.{table_name}.{constraint_name}.")
             continue
-        ordered = sorted(rows, key=lambda item: (item.get("column_position") or 0, str(item.get("local_column", ""))))
-        local_columns = [str(row.get("local_column", "UNKNOWN")).upper() for row in ordered]
-        column_mapping = [
-            {
-                "local_column": str(row.get("local_column", "UNKNOWN")).upper(),
-                "referenced_column": str(row.get("referenced_column", "UNKNOWN")).upper(),
-            }
-            for row in ordered
-        ]
-        evidence = []
-        for row in ordered:
-            evidence.append(_evidence("ALL_CONSTRAINTS", row, column_key="local_column"))
-            evidence.append(_evidence("ALL_CONS_COLUMNS", row, column_key="local_column"))
-        referenced_owner = str(ordered[0].get("referenced_owner", "UNKNOWN")).upper() if ordered else "UNKNOWN"
-        referenced_table = str(ordered[0].get("referenced_table", "UNKNOWN")).upper() if ordered else "UNKNOWN"
-        unknown = not local_columns or referenced_owner == "UNKNOWN" or referenced_table == "UNKNOWN"
-        table["foreign_keys"].append(
-            {
-                "fk_id": f"{owner}.{table_name}.{constraint_name}",
-                "constraint_name": constraint_name,
-                "columns": local_columns,
-                "referenced_owner": referenced_owner,
-                "referenced_table": referenced_table,
-                "column_mapping": column_mapping,
-                "evidence": evidence,
-                "needs_review": unknown,
-                "unknown": unknown,
-            }
-        )
+        table["foreign_keys"].append(assemble_foreign_key(rows, owner=owner, table_name=table_name, constraint_name=constraint_name))
 
     if include_comments:
         for row in raw["table_comments"]:
@@ -390,8 +501,7 @@ def _assemble_tables(raw: dict[str, list[dict[str, Any]]], *, include_comments: 
             if table is None:
                 notes.append(f"Skipped table comment for non-table object {owner}.{table_name}.")
                 continue
-            table["table_comment"] = row.get("table_comment")
-            table["evidence"].append(_evidence("ALL_TAB_COMMENTS", row))
+            apply_table_comment(table, row)
 
         columns_by_key: dict[tuple[str, str, str], dict[str, Any]] = {}
         for table in tables.values():
@@ -399,21 +509,26 @@ def _assemble_tables(raw: dict[str, list[dict[str, Any]]], *, include_comments: 
                 columns_by_key[(table["owner"], table["table_name"], column["name"])] = column
         for row in raw["column_comments"]:
             owner, table_name = _table_key(row)
-            column_name = str(row.get("column_name", "UNKNOWN")).upper()
+            column_name = _upper(row.get("column_name"))
             column = columns_by_key.get((owner, table_name, column_name))
             if column is None:
                 notes.append(f"Skipped column comment for non-table column {owner}.{table_name}.{column_name}.")
                 continue
-            column["comment"] = row.get("column_comment")
-            column["evidence"].append(_evidence("ALL_COL_COMMENTS", row))
+            apply_column_comment(column, row)
 
     for table in tables.values():
-        table["columns"] = sorted(table["columns"], key=lambda col: (col.get("ordinal_position") or 999999, col.get("name", "UNKNOWN")))
-        table["foreign_keys"] = sorted(table["foreign_keys"], key=lambda fk: fk["fk_id"])
         if len(table["columns"]) == 0:
+            table["columns"].append(_schema_column_from_missing(table["owner"], table["table_name"]))
             table["needs_review"] = True
             table["unknown"] = True
             notes.append(f"No columns collected for table {table['owner']}.{table['table_name']}.")
+        table["columns"] = [_strip_internal_column_keys(column) for column in sorted(table["columns"], key=lambda col: (col.get("ordinal_position") or 999999, col.get("name", "UNKNOWN")))]
+        table["foreign_keys"] = sorted(table["foreign_keys"], key=lambda fk: fk["fk_id"])
+        nested_unknown = any(column.get("unknown") for column in table["columns"]) or any(fk.get("unknown") for fk in table["foreign_keys"])
+        pk = table.get("primary_key")
+        nested_unknown = nested_unknown or (isinstance(pk, dict) and bool(pk.get("unknown")))
+        table["unknown"] = bool(table.get("unknown") or nested_unknown)
+        table["needs_review"] = bool(table.get("needs_review") or table["unknown"])
 
     return sorted(tables.values(), key=lambda table: (table["owner"], table["table_name"])), sorted(set(notes))
 

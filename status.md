@@ -40,6 +40,7 @@
 | OPS-01 | Codex 운영 규칙 고정 | ✅ Done | 루트 `AGENTS.md` 생성, README `status.md` 표기 통일 |
 | NEXT-04 | 실DB collector 구현 | ✅ Done | `src/lab/db/oracle_collector.py` live query collector 추가, `collect_db.py` live 접속 경로 전환 |
 | NEXT-05 | 실 Oracle 환경 검증 | ⬜ Todo | 실제 Oracle 접속 정보로 FAIL_FAST/정상 raw metadata 생성 재검증 필요 |
+| NEXT-06 | Oracle raw metadata mapper/assembler 구현 | ✅ Done | table/column/comment mapper, PK/FK assembler, evidence/unknown/stable ID 테스트 보강 |
 
 ---
 
@@ -49,7 +50,7 @@
 ## 진행 중(핵심)
 - `lab validate`의 리포트 포맷/스키마 세부 규칙 고도화(단일 CI fail-fast 기준 정교화).
 - `status.md` 검증 명령 기록 정책(세션 누적 방식) 단순화.
-- 실 Oracle 환경 검증 준비: `oracle_metadata_sql_spec.md` 기준 live query collector 구현은 완료됐고, 실제 DB credential/네트워크 환경에서 재검증해야 한다.
+- 실 Oracle 환경 검증 준비: `oracle_metadata_sql_spec.md` 기준 live query collector와 raw metadata mapper/assembler 구현은 완료됐고, 실제 DB credential/네트워크 환경에서 재검증해야 한다.
 - S02/S06 전용 CI 자동 판정 스크립트 설계.
 
 ## 완료 하이라이트
@@ -61,6 +62,7 @@
 - Codex 운영 규칙 고정: 루트 `AGENTS.md`에 `status.md` 작업 시작/종료 갱신 의무와 완료 조건을 명시하고, README 표기를 실제 파일명 `status.md`로 통일.
 - Oracle metadata SQL spec 고정: `oracle_metadata_sql_spec.md`에 table/column/PK/FK/table comment/column comment SQL과 `db_schema.json` 필드 매핑표를 작성.
 - 실DB collector 구현: `src/lab/db/oracle_collector.py`를 추가해 `oracledb` 선택 의존성 기반 live Oracle 접속, owner-filtered ALL_* 조회, raw metadata/assembled tables 저장, secret-safe FAIL_FAST 경로를 구현.
+- Oracle raw metadata mapper/assembler 구현: table/column/comment mapper와 PK/FK assembler를 분리하고 단일/복합 PK/FK, column order, evidence, unknown/needs_review, stable `table_id`/`fk_id` 테스트를 추가; `validate_db`의 `db_schema.schema.json` 재귀 검증과 owner fallback 정규화를 보강.
 
 ## 다음 액션(우선순위)
 1. 실 Oracle 환경 검증: `pip install -e .[oracle]` 환경에서 잘못된 접속 정보 FAIL_FAST, 정상 접속 raw metadata 생성, password 미노출을 재검증.
@@ -85,6 +87,11 @@
 - `python -m py_compile src/lab/db/oracle_collector.py src/lab/commands/collect_db.py` 실행 결과 PASS 확인.
 - `PYTHONPATH=src pytest -q` 실행 결과 33 passed 확인.
 - `git diff --check` 실행 결과 PASS 확인.
+- `rg -n "placeholder[_]no[_]live[_]query" src tests *.md docs || true` 실행 결과 해당 legacy collection mode 문자열 없음 확인.
+- `PYTHONPATH=src pytest -q tests/test_w6_db_schema_smoke.py` 재실행 결과 9 passed 확인(복합 PK/FK mapper/assembler, validate_db schema 계약 PASS 포함).
+- `PYTHONPATH=src pytest -q` 재실행 결과 35 passed 확인.
+- `python -m py_compile src/lab/db/oracle_collector.py src/lab/commands/collect_db.py src/lab/db/normalizer.py src/lab/quality/validate_db.py` 재실행 결과 PASS 확인.
+- `git diff --check` 재실행 결과 PASS 확인.
 
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload 유지, fingerprint 계산에서는 제외.
@@ -126,3 +133,13 @@
 - Status: PASS (live collector implementation and automated fake-driver validation complete; repo runnable).
 - Risks / blockers: 실제 Oracle 접속 환경이 없어 live DB E2E는 아직 미검증; 운영 실행 전 `pip install -e .[oracle]` 또는 `oracledb` 설치 필요.
 - Next actions: 실제 Oracle 접속 정보로 FAIL_FAST/정상 수집/password 미노출을 재검증하고 live `db_collection.json` fixture 기반 `generate db-schema`/`validate_db` 테스트를 추가.
+
+
+#### 2026-05-07 10:35
+- Scope: NEXT-06 Oracle raw metadata mapper/assembler 구현.
+- Completed: `src/lab/db/oracle_collector.py`의 raw row 조립 로직을 table mapper, column mapper, PK assembler, FK assembler, comment mapper/evidence helper로 분리함; stable `table_id`/`fk_id`, column order 보존, 단일/복합 PK/FK, evidence 누락 방지, unknown/needs_review 처리와 누락 컬럼 fallback을 보강함; `src/lab/quality/validate_db.py`에 `db_schema.schema.json` 재귀 검증을 추가하고 `src/lab/db/normalizer.py`에 owner fallback을 보강함; tests에 복합 PK/FK와 schema 계약 검증을 추가함.
+- Files changed: `src/lab/db/oracle_collector.py`, `src/lab/db/normalizer.py`, `src/lab/quality/validate_db.py`, `tests/test_w6_db_schema_smoke.py`, `status.md`.
+- Validation: `rg -n "placeholder[_]no[_]live[_]query" src tests *.md docs || true` PASS (legacy mode 문자열 없음); `PYTHONPATH=src pytest -q tests/test_w6_db_schema_smoke.py` PASS (9 passed); `PYTHONPATH=src pytest -q` PASS (35 passed); `python -m py_compile src/lab/db/oracle_collector.py src/lab/commands/collect_db.py src/lab/db/normalizer.py src/lab/quality/validate_db.py` PASS; `git diff --check` PASS.
+- Status: PASS (mapper/assembler 구현 및 자동 검증 완료, repo runnable).
+- Risks / blockers: 실제 Oracle 접속 환경 기반 검증은 아직 미실행; 현재 `db_schema.schema.json` 계약 검증은 fake/raw metadata 기반 `validate_db_schema_json` 자동 테스트로 수행.
+- Next actions: 실제 Oracle 접속 정보로 live `db_collection.json`을 생성하고 `generate db-schema`/`validate_db` 및 JSON schema 검증을 재실행.

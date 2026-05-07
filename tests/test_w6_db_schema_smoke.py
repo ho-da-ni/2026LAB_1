@@ -399,3 +399,138 @@ def test_w6_collect_db_connection_failure_is_fail_fast_and_secret_safe(tmp_path:
     assert not (tmp_path / "run" / "db_collection.json").exists()
     assert "DB_CONN_FAILED" in captured.err
     assert "dummy-password" not in captured.err
+
+
+def test_w6_oracle_raw_mapper_handles_composite_keys_and_schema_contract() -> None:
+    from lab.db.normalizer import normalize
+    from lab.db.oracle_collector import ORACLE_DICTIONARY_VIEWS, _assemble_tables
+    from lab.quality.validate_db import validate_db_schema_json
+
+    raw = {
+        "tables": [("APP", "ORDER_LINES", "VALID", "N", "NO", None)],
+        "columns": [
+            ("APP", "ORDER_LINES", "ORDER_ID", 1, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "LINE_NO", 2, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "PRODUCT_ID", 3, "NUMBER", 22, 10, 0, "N", None),
+            ("APP", "ORDER_LINES", "PRODUCT_VERSION", 4, "NUMBER", 22, 10, 0, "N", None),
+        ],
+        "primary_keys": [
+            ("APP", "ORDER_LINES", "PK_ORDER_LINES", "ORDER_ID", 1, "ENABLED", "NOT DEFERRABLE", "IMMEDIATE"),
+            ("APP", "ORDER_LINES", "PK_ORDER_LINES", "LINE_NO", 2, "ENABLED", "NOT DEFERRABLE", "IMMEDIATE"),
+        ],
+        "foreign_keys": [
+            ("APP", "ORDER_LINES", "FK_ORDER_LINES_PRODUCT", "PRODUCT_ID", 1, "APP", "PRODUCTS", "PK_PRODUCTS", "PRODUCT_ID", "ENABLED", "NO ACTION", "NOT DEFERRABLE", "IMMEDIATE"),
+            ("APP", "ORDER_LINES", "FK_ORDER_LINES_PRODUCT", "PRODUCT_VERSION", 2, "APP", "PRODUCTS", "PK_PRODUCTS", "PRODUCT_VERSION", "ENABLED", "NO ACTION", "NOT DEFERRABLE", "IMMEDIATE"),
+        ],
+        "table_comments": [("APP", "ORDER_LINES", "TABLE", "Order line items")],
+        "column_comments": [("APP", "ORDER_LINES", "PRODUCT_VERSION", "Product version")],
+    }
+    descriptions = {
+        "tables": [("OWNER",), ("TABLE_NAME",), ("TABLE_STATUS",), ("TEMPORARY",), ("NESTED",), ("IOT_TYPE",)],
+        "columns": [
+            ("OWNER",),
+            ("TABLE_NAME",),
+            ("COLUMN_NAME",),
+            ("ORDINAL_POSITION",),
+            ("DATA_TYPE",),
+            ("DATA_LENGTH",),
+            ("DATA_PRECISION",),
+            ("DATA_SCALE",),
+            ("NULLABLE_FLAG",),
+            ("DATA_DEFAULT",),
+        ],
+        "primary_keys": [("OWNER",), ("TABLE_NAME",), ("CONSTRAINT_NAME",), ("COLUMN_NAME",), ("COLUMN_POSITION",), ("CONSTRAINT_STATUS",), ("DEFERRABLE",), ("DEFERRED",)],
+        "foreign_keys": [
+            ("OWNER",),
+            ("TABLE_NAME",),
+            ("CONSTRAINT_NAME",),
+            ("LOCAL_COLUMN",),
+            ("COLUMN_POSITION",),
+            ("REFERENCED_OWNER",),
+            ("REFERENCED_TABLE",),
+            ("REFERENCED_CONSTRAINT_NAME",),
+            ("REFERENCED_COLUMN",),
+            ("CONSTRAINT_STATUS",),
+            ("DELETE_RULE",),
+            ("DEFERRABLE",),
+            ("DEFERRED",),
+        ],
+        "table_comments": [("OWNER",), ("TABLE_NAME",), ("TABLE_TYPE",), ("TABLE_COMMENT",)],
+        "column_comments": [("OWNER",), ("TABLE_NAME",), ("COLUMN_NAME",), ("COLUMN_COMMENT",)],
+    }
+    raw_rows = {
+        name: [{column[0].lower(): value for column, value in zip(descriptions[name], row)} for row in rows]
+        for name, rows in raw.items()
+    }
+
+    tables, notes = _assemble_tables(raw_rows, include_comments=True)
+
+    assert notes == []
+    table = tables[0]
+    assert table["table_id"] == "APP.ORDER_LINES"
+    assert [column["name"] for column in table["columns"]] == ["ORDER_ID", "LINE_NO", "PRODUCT_ID", "PRODUCT_VERSION"]
+    assert table["primary_key"]["columns"] == ["ORDER_ID", "LINE_NO"]
+    fk = table["foreign_keys"][0]
+    assert fk["fk_id"] == "APP.ORDER_LINES.FK_ORDER_LINES_PRODUCT"
+    assert fk["columns"] == ["PRODUCT_ID", "PRODUCT_VERSION"]
+    assert fk["column_mapping"] == [
+        {"local_column": "PRODUCT_ID", "referenced_column": "PRODUCT_ID"},
+        {"local_column": "PRODUCT_VERSION", "referenced_column": "PRODUCT_VERSION"},
+    ]
+    assert table["table_comment"] == "Order line items"
+    assert table["columns"][3]["comment"] == "Product version"
+    assert table["needs_review"] is False
+    assert table["unknown"] is False
+    assert table["evidence"]
+    assert all(column["evidence"] for column in table["columns"])
+    assert table["primary_key"]["evidence"]
+    assert fk["evidence"]
+
+    db_schema = normalize(
+        {
+            "metadata": {
+                "source_type": "oracle_live_collection",
+                "collected_at_utc": "2026-05-07T00:00:00Z",
+                "dictionary_views": ORACLE_DICTIONARY_VIEWS,
+                "connection": {
+                    "host": "db.internal.local",
+                    "port": 1521,
+                    "target_mode": "service_name",
+                    "target": "ORCLPDB1",
+                    "owner_filters": ["APP"],
+                },
+            },
+            "tables": tables,
+            "notes": notes,
+        }
+    )
+    findings = validate_db_schema_json(db_schema)
+    assert [finding for finding in findings if finding["level"] == "ERROR"] == []
+    assert db_schema["tables"][0]["columns"][0]["ordinal_position"] == 1
+    assert db_schema["tables"][0]["columns"][3]["ordinal_position"] == 4
+
+
+def test_w6_oracle_mapper_marks_unknown_when_column_metadata_is_incomplete() -> None:
+    from lab.db.oracle_collector import _assemble_tables
+
+    tables, notes = _assemble_tables(
+        {
+            "tables": [{"owner": "APP", "table_name": "BROKEN", "table_status": "VALID"}],
+            "columns": [{"owner": "APP", "table_name": "BROKEN", "column_name": "", "ordinal_position": None, "data_type": None, "nullable_flag": "?"}],
+            "primary_keys": [],
+            "foreign_keys": [],
+            "table_comments": [],
+            "column_comments": [],
+        },
+        include_comments=False,
+    )
+
+    assert notes == []
+    column = tables[0]["columns"][0]
+    assert column["name"] == "UNKNOWN"
+    assert column["ordinal_position"] == 1
+    assert column["needs_review"] is True
+    assert column["unknown"] is True
+    assert column["evidence"]
+    assert tables[0]["needs_review"] is True
+    assert tables[0]["unknown"] is True

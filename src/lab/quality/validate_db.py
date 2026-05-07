@@ -41,6 +41,123 @@ def _validate_evidence_array(evidence: Any, *, findings: list[Finding], target: 
                 _add(findings, "ERROR", "QR-DB-002", row_target, f"missing required key: {key}")
 
 
+def _schema_type_matches(value: Any, expected_type: str) -> bool:
+    if expected_type == "null":
+        return value is None
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return (isinstance(value, int | float) and not isinstance(value, bool))
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    return True
+
+
+def _resolve_schema_ref(schema: dict[str, Any], ref: str) -> dict[str, Any]:
+    if not ref.startswith("#/"):
+        return {}
+    node: Any = schema
+    for part in ref[2:].split("/"):
+        if not isinstance(node, dict):
+            return {}
+        node = node.get(part)
+    return node if isinstance(node, dict) else {}
+
+
+def _validate_json_schema_node(value: Any, node: dict[str, Any], schema: dict[str, Any], target: str) -> list[str]:
+    errors: list[str] = []
+
+    if "$ref" in node:
+        ref_node = _resolve_schema_ref(schema, str(node["$ref"]))
+        if not ref_node:
+            return [f"unresolved schema ref at {target}: {node['$ref']}"]
+        return _validate_json_schema_node(value, ref_node, schema, target)
+
+    if "const" in node and value != node["const"]:
+        errors.append(f"{target} must equal {node['const']!r}")
+
+    if "oneOf" in node and isinstance(node["oneOf"], list):
+        match_count = 0
+        branch_errors: list[str] = []
+        for branch in node["oneOf"]:
+            if not isinstance(branch, dict):
+                continue
+            nested_errors = _validate_json_schema_node(value, branch, schema, target)
+            if nested_errors:
+                branch_errors.extend(nested_errors)
+            else:
+                match_count += 1
+        if match_count != 1:
+            errors.append(f"{target} must match exactly one schema branch")
+            if match_count == 0 and branch_errors:
+                errors.append(branch_errors[0])
+        return errors
+
+    expected = node.get("type")
+    if isinstance(expected, str):
+        if not _schema_type_matches(value, expected):
+            return [f"{target} must be {expected}"]
+    elif isinstance(expected, list):
+        if not any(isinstance(item, str) and _schema_type_matches(value, item) for item in expected):
+            return [f"{target} must be one of {expected}"]
+
+    if isinstance(value, dict):
+        required = node.get("required")
+        if isinstance(required, list):
+            for key in required:
+                if key not in value:
+                    errors.append(f"{target} missing required key: {key}")
+        properties = node.get("properties") if isinstance(node.get("properties"), dict) else {}
+        if node.get("additionalProperties") is False:
+            for key in value:
+                if key not in properties:
+                    errors.append(f"{target}.{key} is not allowed by schema")
+        for key, child_schema in properties.items():
+            if key in value and isinstance(child_schema, dict):
+                errors.extend(_validate_json_schema_node(value[key], child_schema, schema, f"{target}.{key}"))
+
+    if isinstance(value, list):
+        min_items = node.get("minItems")
+        if isinstance(min_items, int) and len(value) < min_items:
+            errors.append(f"{target} must contain at least {min_items} item(s)")
+        if node.get("uniqueItems") is True:
+            seen = set()
+            for item in value:
+                marker = repr(item)
+                if marker in seen:
+                    errors.append(f"{target} must contain unique items")
+                    break
+                seen.add(marker)
+        items_schema = node.get("items")
+        if isinstance(items_schema, dict):
+            for idx, item in enumerate(value):
+                errors.extend(_validate_json_schema_node(item, items_schema, schema, f"{target}[{idx}]"))
+
+    if isinstance(value, str):
+        min_length = node.get("minLength")
+        if isinstance(min_length, int) and len(value) < min_length:
+            errors.append(f"{target} length must be >= {min_length}")
+        pattern = node.get("pattern")
+        if isinstance(pattern, str) and not re.match(pattern, value):
+            errors.append(f"{target} must match pattern {pattern}")
+
+    if isinstance(value, int) and not isinstance(value, bool):
+        minimum = node.get("minimum")
+        maximum = node.get("maximum")
+        if isinstance(minimum, int | float) and value < minimum:
+            errors.append(f"{target} must be >= {minimum}")
+        if isinstance(maximum, int | float) and value > maximum:
+            errors.append(f"{target} must be <= {maximum}")
+
+    return errors
+
+
 def _validate_against_schema_file(db_schema: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     schema_path = Path("db_schema.schema.json")
@@ -62,6 +179,9 @@ def _validate_against_schema_file(db_schema: dict[str, Any]) -> list[Finding]:
     for key in required:
         if key not in db_schema:
             _add(findings, "ERROR", "QR-DB-001", "db_schema.json", f"missing required key (schema): {key}")
+
+    for detail in _validate_json_schema_node(db_schema, payload, payload, "db_schema.json"):
+        _add(findings, "ERROR", "QR-DB-007", "db_schema.json", detail)
     return findings
 
 
