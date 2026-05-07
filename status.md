@@ -33,6 +33,7 @@
 | W6-DB-02 | 접속 정보 전달/마스킹 정책 정의 | ✅ Done | `db_connection_policy.md` 작성 완료 |
 | W6-DB-03 | Oracle 수집 대상/제외 범위 정의 | ✅ Done | `oracle_collection_scope.md` 작성 완료 |
 | W6-DB-04 | DB IR 스키마 정의 | ✅ Done | `db_schema.spec.md` 작성 완료 |
+| W6-DB-06 | Oracle metadata SQL spec 작성 | ✅ Done | `oracle_metadata_sql_spec.md`에 ALL_* 조회 SQL/필드 매핑 계약 고정 |
 | NEXT-01 | `generate db-schema` 구현 | ✅ Done | W6 산출물 기준 완료, `tests/test_w6_db_schema_smoke.py` 추가 |
 | NEXT-02 | S02/S06 CI 자동 판정기 | ⬜ Todo | 임시 repo/훅 의존 제거 필요 |
 | NEXT-03 | 샘플 repo fixture 실제 추가 | ⬜ Todo | `examples/repo-sample` 필요 |
@@ -42,12 +43,12 @@
 ---
 
 ## 현재 목표
-- Codex 운영 규칙을 루트 `AGENTS.md`와 `status.md` 기준으로 고정한 상태에서, 다음 0순위 구현은 `src/lab/commands/collect_db.py`의 실DB collector 전환이다.
+- Oracle metadata SQL spec을 고정한 상태에서, 다음 0순위 구현은 `src/lab/commands/collect_db.py`의 실DB collector 전환이다.
 
 ## 진행 중(핵심)
 - `lab validate`의 리포트 포맷/스키마 세부 규칙 고도화(단일 CI fail-fast 기준 정교화).
 - `status.md` 검증 명령 기록 정책(세션 누적 방식) 단순화.
-- 실DB collector 구현 설계: 현재 `src/lab/commands/collect_db.py`는 접속 인자 검증과 placeholder JSON 생성만 수행한다.
+- 실DB collector 구현 설계: `oracle_metadata_sql_spec.md`에 따라 `ALL_TABLES`, `ALL_TAB_COLUMNS`, `ALL_CONSTRAINTS`, `ALL_CONS_COLUMNS`, `ALL_TAB_COMMENTS`, `ALL_COL_COMMENTS` 조회를 구현해야 한다.
 - S02/S06 전용 CI 자동 판정 스크립트 설계.
 
 ## 완료 하이라이트
@@ -57,9 +58,10 @@
 - W6 DB schema 축 완료: 정규화 강화, `DB_SCHEMA.md` Integrity 섹션 추가, `validate_db` 규칙 강화, fixture smoke test 추가.
 - W6 DB 문서 계약 고정: `db_collect_cli_spec.md`, `db_connection_policy.md`, `oracle_collection_scope.md`, `db_schema.spec.md` 추가.
 - Codex 운영 규칙 고정: 루트 `AGENTS.md`에 `status.md` 작업 시작/종료 갱신 의무와 완료 조건을 명시하고, README 표기를 실제 파일명 `status.md`로 통일.
+- Oracle metadata SQL spec 고정: `oracle_metadata_sql_spec.md`에 table/column/PK/FK/table comment/column comment SQL과 `db_schema.json` 필드 매핑표를 작성.
 
 ## 다음 액션(우선순위)
-1. 실DB collector 구현: `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체하고 `db_collect_cli_spec.md`/`db_connection_policy.md`/`oracle_collection_scope.md` 계약을 반영.
+1. 실DB collector 구현: `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체하고 `oracle_metadata_sql_spec.md`의 SQL/매핑 계약과 `db_collect_cli_spec.md`/`db_connection_policy.md`/`oracle_collection_scope.md` 계약을 반영.
 2. S02/S06 전용 검증을 CI 친화형 자동 판정 스크립트로 고정.
 3. `examples/repo-sample` fixture 보강으로 문서/실행 환경 정합성 확보.
 4. `status.md` 검증 로그 누적 규칙(요약 템플릿) 확정.
@@ -74,6 +76,8 @@
 - `PYTHONPATH=src python -m lab generate db-schema --input tests/fixtures/db/sample_db_input.json --json-output <tmp>/db_schema.json --output <tmp>/DB_SCHEMA.md` smoke 실행으로 JSON/Markdown 동시 생성 확인.
 - `rg -n 'STATUS[.]md|STATUS[[:space:]]검증' README.md status.md AGENTS.md share_pack_mid/README.md docs/VALIDATION_TEST_SCENARIOS.md docs/QUALITY_RULES.md || true` 실행 결과 README/status 운영 문서 범위에서 대문자 파일명 표기 없음 확인.
 - `PYTHONPATH=src pytest -q` 실행 결과 32 passed 확인.
+- `python - <<'PY' ...` 스펙 내용 점검 실행 결과 `oracle_metadata_sql_spec.md required content PASS` 확인(필수 ALL_* 뷰, 6개 SQL 섹션, owner filter, 주요 db_schema 매핑 필드 존재).
+- `PYTHONPATH=src pytest -q` 재실행 결과 32 passed 확인.
 
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload 유지, fingerprint 계산에서는 제외.
@@ -95,3 +99,13 @@
 - Status: PASS (문서/운영 규칙 반영 및 전체 테스트 통과; repo runnable).
 - Risks / blockers: `src/lab/commands/collect_db.py`는 아직 placeholder로, 실DB 접속/Oracle 메타데이터 조회가 미구현 상태.
 - Next actions: 다음 세션에서 실DB collector 구현을 시작하고, `src/lab/commands/collect_db.py` placeholder를 Oracle live metadata collector로 교체.
+
+
+#### 2026-05-07 10:17
+- Scope: W6-DB-06 Oracle metadata SQL spec 작성.
+- Completed: `oracle_metadata_sql_spec.md`에 table 목록, column 목록, PK, FK, table comment, column comment 조회 SQL을 고정하고 각 SQL의 목적/입력/출력 컬럼/`db_schema.json` 매핑표를 작성함; 모든 SQL에 owner include 및 system owner exclude 필터를 명시함.
+- Files changed: `oracle_metadata_sql_spec.md`, `status.md`.
+- Validation: `python - <<'PY' ...` PASS (`oracle_metadata_sql_spec.md required content PASS`); `PYTHONPATH=src pytest -q` PASS (32 passed).
+- Status: PASS (SQL spec 문서화 완료, repo runnable).
+- Risks / blockers: `src/lab/commands/collect_db.py`는 여전히 placeholder이며 이번 작업은 SQL 계약 문서화까지만 완료함; 실제 Oracle 연결 환경 검증은 아직 미실행.
+- Next actions: 실DB collector 구현에서 `oracle_metadata_sql_spec.md` SQL을 실행하고 결과를 `db_schema.spec.md`/`db_schema.schema.json` 구조로 정규화.
