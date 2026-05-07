@@ -325,6 +325,7 @@ def validate_db_markdown(run_dir: Path) -> list[Finding]:
     findings: list[Finding] = []
     for marker in [
         "# DB Schema Overview",
+        "## Integrity",
         "## Source",
         "## Database",
         "## Owners",
