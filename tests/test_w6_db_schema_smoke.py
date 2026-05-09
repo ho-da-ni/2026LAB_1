@@ -62,6 +62,7 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
     assert isinstance(db_schema["owners"], list)
     assert db_schema["tables"][0]["table_id"] == "PUBLIC.USERS"
     assert db_schema["tables"][0]["foreign_keys"][0]["fk_id"] == "PUBLIC.USERS.FK_USERS_ORG"
+    assert db_schema["tables"][0]["indexes"][0]["index_name"] == "IDX_USERS_ORG_ID"
     assert isinstance(db_schema["tables"][0]["evidence"], list) and len(db_schema["tables"][0]["evidence"]) >= 1
 
     markdown = md_out.read_text(encoding="utf-8")
@@ -72,6 +73,27 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
     assert "## Database" in markdown
     assert "## Owners" in markdown
     assert "### PUBLIC.USERS" in markdown
+    assert "generated_at:" in markdown
+    assert "| ordinal | name | data_type | nullable | default | unknown | needs_review |" in markdown
+    assert "#### Indexes" in markdown
+    assert "IDX_USERS_ORG_ID" in markdown
+
+
+def test_w6_db_spec_smoke_generates_requested_local_oracle_path_from_fixture(tmp_path: Path) -> None:
+    fixture_path = Path("tests/fixtures/db/sample_db_input.json")
+    docs_dir = tmp_path / "artifacts" / "docs" / "local-oracle"
+    db_spec_out = docs_dir / "db_spec.md"
+    json_out = tmp_path / "artifacts" / "db" / "local-oracle" / "db_schema.json"
+
+    assert main(["generate", "db-schema", "--input", str(fixture_path), "--json-output", str(json_out), "--output", str(db_spec_out)]) == 0
+
+    assert db_spec_out.exists()
+    markdown = db_spec_out.read_text(encoding="utf-8")
+    assert "# DB Schema Overview" in markdown
+    assert "## Database" in markdown
+    assert "## Table Index" in markdown
+    assert "### PUBLIC.USERS" in markdown
+    assert "| 1 | ID | BIGINT | False | UNKNOWN |" in markdown
 
 
 def test_w6_db_schema_validate_strict_passes_for_schema_compliant_output(tmp_path: Path) -> None:

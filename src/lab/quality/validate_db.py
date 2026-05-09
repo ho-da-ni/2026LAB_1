@@ -14,10 +14,11 @@ Finding = dict[str, str]
 TOP_LEVEL_REQUIRED = ("schema_version", "source", "database", "owners", "tables", "notes", "needs_review")
 SOURCE_REQUIRED = ("collector", "collected_at", "dictionary_views")
 DATABASE_REQUIRED = ("vendor", "host", "port", "service_name", "sid")
-TABLE_REQUIRED = ("table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "evidence", "needs_review", "unknown")
+TABLE_REQUIRED = ("table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "indexes", "evidence", "needs_review", "unknown")
 COLUMN_REQUIRED = ("name", "ordinal_position", "data_type", "nullable", "needs_review", "unknown", "evidence")
 PK_REQUIRED = ("constraint_name", "columns", "evidence", "needs_review", "unknown")
 FK_REQUIRED = ("fk_id", "constraint_name", "columns", "referenced_owner", "referenced_table", "column_mapping", "evidence", "needs_review", "unknown")
+INDEX_REQUIRED = ("index_name", "columns", "unique", "needs_review", "unknown")
 
 TABLE_ID_PATTERN = re.compile(r"^[A-Z0-9_$.]+\.[A-Z0-9_$.]+$")
 FK_ID_PATTERN = re.compile(r"^[A-Z0-9_$.]+\.[A-Z0-9_$.]+\.[A-Z0-9_$.]+$")
@@ -319,6 +320,27 @@ def validate_db_schema_json(db_schema: dict[str, Any]) -> list[Finding]:
             if not isinstance(fk.get("unknown"), bool):
                 _add(findings, "ERROR", "QR-DB-002", fk_target, "unknown must be boolean")
             _validate_evidence_array(fk.get("evidence"), findings=findings, target=fk_target)
+
+        indexes = table.get("indexes")
+        if not isinstance(indexes, list):
+            _add(findings, "ERROR", "QR-DB-002", target, "indexes must be array")
+            continue
+        for index_idx, index in enumerate(indexes):
+            index_target = f"{target}:indexes[{index_idx}]"
+            if not isinstance(index, dict):
+                _add(findings, "ERROR", "QR-DB-002", index_target, "index must be object")
+                continue
+            for key in INDEX_REQUIRED:
+                if key not in index:
+                    _add(findings, "ERROR", "QR-DB-002", index_target, f"missing required key: {key}")
+            if not isinstance(index.get("columns"), list):
+                _add(findings, "ERROR", "QR-DB-002", index_target, "columns must be array")
+            if not isinstance(index.get("unique"), bool):
+                _add(findings, "ERROR", "QR-DB-002", index_target, "unique must be boolean")
+            if not isinstance(index.get("needs_review"), bool):
+                _add(findings, "ERROR", "QR-DB-002", index_target, "needs_review must be boolean")
+            if not isinstance(index.get("unknown"), bool):
+                _add(findings, "ERROR", "QR-DB-002", index_target, "unknown must be boolean")
 
     return findings
 

@@ -139,9 +139,21 @@
         "unknown": { "type": "boolean" }
       }
     },
+    "index": {
+      "type": "object",
+      "required": ["index_name", "columns", "unique", "needs_review", "unknown"],
+      "additionalProperties": false,
+      "properties": {
+        "index_name": { "type": "string", "minLength": 1 },
+        "columns": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "unique": { "type": "boolean" },
+        "needs_review": { "type": "boolean" },
+        "unknown": { "type": "boolean" }
+      }
+    },
     "table": {
       "type": "object",
-      "required": ["table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "evidence", "needs_review", "unknown"],
+      "required": ["table_id", "owner", "table_name", "table_comment", "columns", "primary_key", "foreign_keys", "indexes", "evidence", "needs_review", "unknown"],
       "additionalProperties": false,
       "properties": {
         "table_id": { "type": "string", "minLength": 1, "pattern": "^[^.]+\\.[^.]+$" },
@@ -151,6 +163,7 @@
         "columns": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/column" } },
         "primary_key": { "$ref": "#/$defs/primary_key" },
         "foreign_keys": { "type": "array", "items": { "$ref": "#/$defs/foreign_key" } },
+        "indexes": { "type": "array", "items": { "$ref": "#/$defs/index" } },
         "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/evidence" } },
         "needs_review": { "type": "boolean" },
         "unknown": { "type": "boolean" }
