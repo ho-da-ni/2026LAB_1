@@ -19,6 +19,12 @@ def render(payload: dict[str, object]) -> str:
     lines.append(f"- needs_review: `{bool(payload.get('needs_review', False))}`")
     lines.append("")
 
+    lines.append("## Integrity")
+    lines.append("- db_schema_json_policy: `validated by db_schema.schema.json`")
+    lines.append("- run_artifact_policy: `run_context.json and changed_files.json fingerprints are validated by lab validate`")
+    lines.append("- markdown_policy: `DB_SCHEMA.md is a rendered view of db_schema.json; no separate markdown fingerprint is embedded`")
+    lines.append("")
+
     lines.append("## Source")
     lines.append(f"- collector: `{source.get('collector', 'UNKNOWN')}`")
     lines.append(f"- collected_at: `{source.get('collected_at', 'UNKNOWN')}`")

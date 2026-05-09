@@ -97,7 +97,6 @@ def _validate_json_schema_node(value: Any, node: dict[str, Any], schema: dict[st
             errors.append(f"{target} must match exactly one schema branch")
             if match_count == 0 and branch_errors:
                 errors.append(branch_errors[0])
-        return errors
 
     expected = node.get("type")
     if isinstance(expected, str):
@@ -217,6 +216,18 @@ def validate_db_schema_json(db_schema: dict[str, Any]) -> list[Finding]:
         port = database.get("port")
         if not isinstance(port, int) or port < 1 or port > 65535:
             _add(findings, "ERROR", "QR-DB-002", "db_schema.json:database.port", "port must be integer in range 1..65535")
+        service_name = database.get("service_name")
+        sid = database.get("sid")
+        has_service_name = isinstance(service_name, str) and bool(service_name.strip())
+        has_sid = isinstance(sid, str) and bool(sid.strip())
+        if has_service_name == has_sid:
+            _add(
+                findings,
+                "ERROR",
+                "QR-DB-002",
+                "db_schema.json:database",
+                "exactly one of database.service_name or database.sid must be a non-empty string; the other must be null",
+            )
 
     owners = db_schema.get("owners")
     if not isinstance(owners, list):
@@ -325,6 +336,7 @@ def validate_db_markdown(run_dir: Path) -> list[Finding]:
     findings: list[Finding] = []
     for marker in [
         "# DB Schema Overview",
+        "## Integrity",
         "## Source",
         "## Database",
         "## Owners",

@@ -218,8 +218,16 @@ def normalize(raw: dict[str, Any]) -> dict[str, Any]:
     port = connection.get("port", raw.get("port", 1521))
     if not isinstance(port, int):
         port = 1521
-    service_name = connection.get("target") if connection.get("target_mode") == "service_name" else raw.get("service_name")
-    sid = connection.get("target") if connection.get("target_mode") == "sid" else raw.get("sid")
+    service_name = (
+        connection.get("target")
+        if connection.get("target_mode") == "service_name"
+        else metadata.get("service_name", raw.get("service_name"))
+    )
+    sid = (
+        connection.get("target")
+        if connection.get("target_mode") == "sid"
+        else metadata.get("sid", raw.get("sid"))
+    )
 
     owners_raw = connection.get("owner_filters", raw.get("owners", []))
     owners = sorted({str(owner).upper() for owner in owners_raw if str(owner).strip()}) if isinstance(owners_raw, list) else []
