@@ -143,3 +143,44 @@
 - Status: PASS (mapper/assembler 구현 및 자동 검증 완료, repo runnable).
 - Risks / blockers: 실제 Oracle 접속 환경 기반 검증은 아직 미실행; 현재 `db_schema.schema.json` 계약 검증은 fake/raw metadata 기반 `validate_db_schema_json` 자동 테스트로 수행.
 - Next actions: 실제 Oracle 접속 정보로 live `db_collection.json`을 생성하고 `generate db-schema`/`validate_db` 및 JSON schema 검증을 재실행.
+
+#### 2026-05-07 10:44
+- Scope: W6-DB Markdown integrity marker alignment and CLI spec example correction.
+- Completed: Added required `## Integrity` section to DB schema markdown renderer with the current JSON schema/run artifact validation policy; added `## Integrity` to DB markdown validation markers; updated DB collect CLI spec example B to include required `--owner`; added regression asserts for rendered integrity policy text and missing marker detection.
+- Files changed: `db_collect_cli_spec.md`, `src/lab/db/renderer.py`, `src/lab/quality/validate_db.py`, `tests/test_w6_db_schema_smoke.py`, `tests/test_w4_docs_and_quality.py`, `status.md`.
+- Validation: `PYTHONPATH=src pytest -q tests/test_w6_db_schema_smoke.py tests/test_w4_docs_and_quality.py` PASS (17 passed); `PYTHONPATH=src pytest -q` PASS (35 passed); `python -m py_compile src/lab/db/renderer.py src/lab/quality/validate_db.py` PASS; `git diff --check` PASS.
+- Status: PASS (DB schema markdown integrity policy/validation markers aligned with generated output; repo runnable).
+- Risks / blockers: Actual Oracle connection validation remains unrun in this environment; current live collector validation remains fake-driver based.
+- Next actions: Validate against a real Oracle connection, then add live `db_collection.json` fixture coverage for `generate db-schema`/`validate_db`.
+
+#### 2026-05-09 00:00
+- Scope: W6-DB database target one-of validation.
+- Completed: Added explicit `database.service_name`/`database.sid` one-of validation so exactly one non-empty target is accepted; mirrored the contract in `db_schema.schema.json`; allowed fixture metadata `service_name`/`sid` to flow through normalization; added regression coverage for service-only PASS, SID-only PASS, both-present FAIL, and both-null FAIL.
+- Files changed: `db_schema.schema.json`, `src/lab/db/normalizer.py`, `src/lab/quality/validate_db.py`, `tests/fixtures/db/sample_db_input.json`, `tests/test_w6_db_schema_smoke.py`, `status.md`.
+- Validation: `PYTHONPATH=src pytest -q tests/test_w6_db_schema_smoke.py::test_w6_db_schema_validate_database_target_one_of -q` PASS; `PYTHONPATH=src pytest -q` PASS (36 passed); `python -m py_compile src/lab/db/normalizer.py src/lab/quality/validate_db.py` PASS; `git diff --check` PASS.
+- Status: PASS (database target one-of validation implemented and repo runnable).
+- Risks / blockers: Actual Oracle connection validation remains unrun in this environment; current live collector validation remains fake-driver based.
+- Next actions: Validate against a real Oracle connection, then add live `db_collection.json` fixture coverage for `generate db-schema`/`validate_db`.
+
+#### 2026-05-09 - NEXT-05 실 Oracle 환경 검증
+- Scope: Docker Oracle Free 컨테이너 기반 LAB live DB 수집 E2E 검증.
+- DB Target:
+  - host: localhost
+  - port: 1521
+  - service_name: FREEPDB1
+  - username: LAB_USER
+  - owner: LAB_USER
+  - password: env `LAB_DB_PASSWORD`
+- Completed:
+  - Oracle 컨테이너 `DATABASE IS READY TO USE!` 확인.
+  - `lab collect db` 실행 성공.
+  - `artifacts/db/local-oracle/db_collection.json` 생성 확인.
+- Files changed: `status.md`.
+- Validation:
+  - PASS: `lab collect db --host localhost --port 1521 --service-name FREEPDB1 --username LAB_USER --password-env LAB_DB_PASSWORD --owner LAB_USER --output-dir artifacts/db/local-oracle --timeout 60 --include-comments --format json`
+- Status: PASS (Docker Oracle Free 기반 live DB 수집 E2E 검증 완료; `db_collection.json` 생성 확인; repo runnable state는 다음 generate/validate 단계 전).
+- Risks / blockers: `db_collection.json`의 기대 테이블 포함 여부 및 `generate db-schema`/`validate_db` 단계는 아직 미확인.
+- Next actions:
+  - `db_collection.json` 내 `SAMPLE_DEPARTMENT`, `SAMPLE_USER`, `SAMPLE_API` 포함 여부 확인.
+  - `lab generate db-schema` 실행.
+  - `db_schema.json`, `DB_SCHEMA.md` 생성 확인.

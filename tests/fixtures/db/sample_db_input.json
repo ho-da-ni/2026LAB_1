@@ -3,6 +3,7 @@
     "source_type": "snapshot",
     "source_path": "fixtures/db/sample_db_input.json",
     "snapshot_id": "snap_fixture_001",
+    "service_name": "ORCLPDB1",
     "collected_at_utc": "2026-04-01T00:00:00Z"
   },
   "tables": [

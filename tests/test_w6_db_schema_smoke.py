@@ -66,6 +66,8 @@ def test_w6_db_schema_smoke_from_fixture(tmp_path: Path) -> None:
 
     markdown = md_out.read_text(encoding="utf-8")
     assert "# DB Schema Overview" in markdown
+    assert "## Integrity" in markdown
+    assert "run_context.json and changed_files.json fingerprints" in markdown
     assert "## Source" in markdown
     assert "## Database" in markdown
     assert "## Owners" in markdown
@@ -94,6 +96,33 @@ def test_w6_db_schema_validate_strict_passes_for_schema_compliant_output(tmp_pat
         == 0
     )
     assert main(["validate", "--run-dir", str(run_dir), "--strict"]) == 0
+
+
+def test_w6_db_schema_validate_database_target_one_of() -> None:
+    from lab.db.normalizer import normalize
+    from lab.quality.validate_db import validate_db_schema_json
+
+    raw = json.loads(Path("tests/fixtures/db/sample_db_input.json").read_text(encoding="utf-8"))
+    base = normalize(raw)
+
+    cases = [
+        ("service_name_only", "ORCLPDB1", None, True),
+        ("sid_only", None, "ORCL", True),
+        ("both_present", "ORCLPDB1", "ORCL", False),
+        ("both_null", None, None, False),
+    ]
+    for _name, service_name, sid, should_pass in cases:
+        candidate = json.loads(json.dumps(base))
+        candidate["database"]["service_name"] = service_name
+        candidate["database"]["sid"] = sid
+
+        errors = [finding for finding in validate_db_schema_json(candidate) if finding["level"] == "ERROR"]
+
+        if should_pass:
+            assert errors == []
+        else:
+            assert any(finding["target"] == "db_schema.json:database" for finding in errors)
+            assert any("exactly one of database.service_name or database.sid" in finding["detail"] for finding in errors)
 
 
 def test_w6_db_schema_validate_detects_schema_contract_violation(tmp_path: Path) -> None:

@@ -334,6 +334,8 @@ def test_w4_generate_db_schema_outputs_json_and_markdown(tmp_path: Path) -> None
     assert "table_id" in db_schema["tables"][0]
     markdown = md_out.read_text(encoding="utf-8")
     assert "# DB Schema Overview" in markdown
+    assert "## Integrity" in markdown
+    assert "run_context.json and changed_files.json fingerprints" in markdown
     assert "## Source" in markdown
     assert "## Database" in markdown
     assert "## Table Index" in markdown
@@ -397,3 +399,5 @@ def test_w4_validate_db_schema_markdown_sections_and_unknown_policy(tmp_path: Pa
     (run_dir / "DB_SCHEMA.md").write_text("# bad\n- `UNKNOWN`\n", encoding="utf-8")
 
     assert main(["validate", "--run-dir", str(run_dir)]) == 4
+    report = json.loads((run_dir / "quality_gate_report.json").read_text(encoding="utf-8"))
+    assert any("## Integrity" in item["detail"] for item in report["errors"])
