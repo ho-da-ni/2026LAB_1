@@ -152,3 +152,12 @@
 - Status: PASS (DB schema markdown integrity policy/validation markers aligned with generated output; repo runnable).
 - Risks / blockers: Actual Oracle connection validation remains unrun in this environment; current live collector validation remains fake-driver based.
 - Next actions: Validate against a real Oracle connection, then add live `db_collection.json` fixture coverage for `generate db-schema`/`validate_db`.
+
+#### 2026-05-09 00:00
+- Scope: W6-DB database target one-of validation.
+- Completed: Added explicit `database.service_name`/`database.sid` one-of validation so exactly one non-empty target is accepted; mirrored the contract in `db_schema.schema.json`; allowed fixture metadata `service_name`/`sid` to flow through normalization; added regression coverage for service-only PASS, SID-only PASS, both-present FAIL, and both-null FAIL.
+- Files changed: `db_schema.schema.json`, `src/lab/db/normalizer.py`, `src/lab/quality/validate_db.py`, `tests/fixtures/db/sample_db_input.json`, `tests/test_w6_db_schema_smoke.py`, `status.md`.
+- Validation: `PYTHONPATH=src pytest -q tests/test_w6_db_schema_smoke.py::test_w6_db_schema_validate_database_target_one_of -q` PASS; `PYTHONPATH=src pytest -q` PASS (36 passed); `python -m py_compile src/lab/db/normalizer.py src/lab/quality/validate_db.py` PASS; `git diff --check` PASS.
+- Status: PASS (database target one-of validation implemented and repo runnable).
+- Risks / blockers: Actual Oracle connection validation remains unrun in this environment; current live collector validation remains fake-driver based.
+- Next actions: Validate against a real Oracle connection, then add live `db_collection.json` fixture coverage for `generate db-schema`/`validate_db`.
