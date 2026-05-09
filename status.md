@@ -161,3 +161,26 @@
 - Status: PASS (database target one-of validation implemented and repo runnable).
 - Risks / blockers: Actual Oracle connection validation remains unrun in this environment; current live collector validation remains fake-driver based.
 - Next actions: Validate against a real Oracle connection, then add live `db_collection.json` fixture coverage for `generate db-schema`/`validate_db`.
+
+#### 2026-05-09 - NEXT-05 실 Oracle 환경 검증
+- Scope: Docker Oracle Free 컨테이너 기반 LAB live DB 수집 E2E 검증.
+- DB Target:
+  - host: localhost
+  - port: 1521
+  - service_name: FREEPDB1
+  - username: LAB_USER
+  - owner: LAB_USER
+  - password: env `LAB_DB_PASSWORD`
+- Completed:
+  - Oracle 컨테이너 `DATABASE IS READY TO USE!` 확인.
+  - `lab collect db` 실행 성공.
+  - `artifacts/db/local-oracle/db_collection.json` 생성 확인.
+- Files changed: `status.md`.
+- Validation:
+  - PASS: `lab collect db --host localhost --port 1521 --service-name FREEPDB1 --username LAB_USER --password-env LAB_DB_PASSWORD --owner LAB_USER --output-dir artifacts/db/local-oracle --timeout 60 --include-comments --format json`
+- Status: PASS (Docker Oracle Free 기반 live DB 수집 E2E 검증 완료; `db_collection.json` 생성 확인; repo runnable state는 다음 generate/validate 단계 전).
+- Risks / blockers: `db_collection.json`의 기대 테이블 포함 여부 및 `generate db-schema`/`validate_db` 단계는 아직 미확인.
+- Next actions:
+  - `db_collection.json` 내 `SAMPLE_DEPARTMENT`, `SAMPLE_USER`, `SAMPLE_API` 포함 여부 확인.
+  - `lab generate db-schema` 실행.
+  - `db_schema.json`, `DB_SCHEMA.md` 생성 확인.
