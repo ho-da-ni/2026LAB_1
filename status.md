@@ -193,3 +193,12 @@
 - Status: PASS (fixture 기반 DB spec smoke path 구현/검증 완료; repo runnable). WARN (이 체크아웃에는 live local Oracle `db_collection.json`이 없어 실제 `artifacts/docs/local-oracle/db_spec.md` 생성은 미실행).
 - Risks / blockers: 실제 local Oracle 수집 산출물은 현재 작업 디렉터리에 없어 live DB 명세서 내용 검증은 다음 환경에서 실행 필요; renderer의 `generated_at`은 현재 UTC 시각으로 기록되므로 Markdown 산출물은 생성 시각에 따라 달라짐.
 - Next actions: `artifacts/db/local-oracle/db_collection.json`이 있는 환경에서 `lab generate db-schema --input artifacts/db/local-oracle/db_collection.json --json-output artifacts/db/local-oracle/db_schema.json --output artifacts/docs/local-oracle/db_spec.md`를 실행하고, 생성된 `db_spec.md`에 기대 테이블(`SAMPLE_DEPARTMENT`, `SAMPLE_USER`, `SAMPLE_API`)과 컬럼/PK/FK/Index가 포함되는지 확인.
+
+#### 2026-05-09 05:30
+- Scope: TEST-IMPORT-01 pytest `lab` import path 설정 보완.
+- Completed: `src/lab` package를 editable install 또는 `PYTHONPATH` 환경변수 없이 pytest collection에서 import할 수 있도록 `pyproject.toml`의 `[tool.pytest.ini_options]`에 `pythonpath = ["src"]`를 추가함.
+- Files changed: `pyproject.toml`, `status.md`.
+- Validation: FAIL-before `python -m pytest -q` (8 collection errors: `ModuleNotFoundError: No module named 'lab'`); PASS-after `python -m pytest -q` (37 passed); PASS `git diff --check`.
+- Status: PASS (`python -m pytest -q`가 repo root에서 통과하며 repo runnable).
+- Risks / blockers: 없음.
+- Next actions: local Oracle `artifacts/db/local-oracle/db_collection.json`이 있는 환경에서 `lab generate db-schema --input artifacts/db/local-oracle/db_collection.json --json-output artifacts/db/local-oracle/db_schema.json --output artifacts/docs/local-oracle/db_spec.md`를 실행해 live `db_spec.md`를 검증.
