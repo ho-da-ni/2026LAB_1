@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
+
+def _format_default(value: object) -> str:
+    if value is None:
+        return "NONE"
+    text = str(value).strip()
+    return text if text else "NONE"
+
 
 def render(payload: dict[str, object]) -> str:
     source = payload.get("source") if isinstance(payload.get("source"), dict) else {}
@@ -15,6 +24,7 @@ def render(payload: dict[str, object]) -> str:
     lines: list[str] = []
     lines.append("# DB Schema Overview")
     lines.append(f"- schema_version: `{payload.get('schema_version', 'UNKNOWN')}`")
+    lines.append(f"- generated_at: `{datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}`")
     lines.append(f"- table_count: `{len(tables)}`")
     lines.append(f"- needs_review: `{bool(payload.get('needs_review', False))}`")
     lines.append("")
@@ -54,16 +64,17 @@ def render(payload: dict[str, object]) -> str:
     lines.append("")
 
     lines.append("## Table Index")
-    lines.append("| table_id | owner | table_name | column_count | pk | fk_count | unknown | needs_review |")
-    lines.append("|---|---|---|---:|---|---:|---|---|")
+    lines.append("| table_id | owner | table_name | column_count | pk | fk_count | index_count | unknown | needs_review |")
+    lines.append("|---|---|---|---:|---|---:|---:|---|---|")
     for table in tables:
         columns = table.get("columns") if isinstance(table.get("columns"), list) else []
         pk = table.get("primary_key") if isinstance(table.get("primary_key"), dict) else None
         pk_columns = pk.get("columns") if isinstance(pk, dict) and isinstance(pk.get("columns"), list) else []
         foreign_keys = table.get("foreign_keys") if isinstance(table.get("foreign_keys"), list) else []
+        indexes = table.get("indexes") if isinstance(table.get("indexes"), list) else []
         lines.append(
             f"| {table.get('table_id', 'UNKNOWN')} | {table.get('owner', 'UNKNOWN')} | {table.get('table_name', 'UNKNOWN')} | "
-            f"{len(columns)} | {', '.join(str(c) for c in pk_columns) if pk_columns else 'NONE'} | {len(foreign_keys)} | "
+            f"{len(columns)} | {', '.join(str(c) for c in pk_columns) if pk_columns else 'NONE'} | {len(foreign_keys)} | {len(indexes)} | "
             f"{table.get('unknown', True)} | {table.get('needs_review', True)} |"
         )
 
@@ -79,14 +90,14 @@ def render(payload: dict[str, object]) -> str:
         lines.append("#### Columns")
         columns = table.get("columns") if isinstance(table.get("columns"), list) else []
         if columns:
-            lines.append("| ordinal | name | data_type | nullable | unknown | needs_review |")
-            lines.append("|---:|---|---|---|---|---|")
+            lines.append("| ordinal | name | data_type | nullable | default | unknown | needs_review |")
+            lines.append("|---:|---|---|---|---|---|---|")
             for col in columns:
                 if not isinstance(col, dict):
                     continue
                 lines.append(
                     f"| {col.get('ordinal_position', 'UNKNOWN')} | {col.get('name', 'UNKNOWN')} | {col.get('data_type', 'UNKNOWN')} | "
-                    f"{col.get('nullable', 'UNKNOWN')} | {col.get('unknown', True)} | {col.get('needs_review', True)} |"
+                    f"{col.get('nullable', 'UNKNOWN')} | {_format_default(col.get('default'))} | {col.get('unknown', True)} | {col.get('needs_review', True)} |"
                 )
         else:
             lines.append("- `UNKNOWN`")
@@ -113,6 +124,23 @@ def render(payload: dict[str, object]) -> str:
                 lines.append(
                     f"- `{fk.get('fk_id', 'UNKNOWN')}` -> `{fk.get('referenced_owner', 'UNKNOWN')}.{fk.get('referenced_table', 'UNKNOWN')}` "
                     f"(unknown={fk.get('unknown', True)}, needs_review={fk.get('needs_review', True)})"
+                )
+        else:
+            lines.append("- `NONE`")
+        lines.append("")
+
+        lines.append("#### Indexes")
+        indexes = table.get("indexes") if isinstance(table.get("indexes"), list) else []
+        if indexes:
+            lines.append("| index_name | columns | unique | unknown | needs_review |")
+            lines.append("|---|---|---|---|---|")
+            for index in indexes:
+                if not isinstance(index, dict):
+                    continue
+                index_columns = index.get("columns") if isinstance(index.get("columns"), list) else []
+                lines.append(
+                    f"| {index.get('index_name', 'UNKNOWN')} | {', '.join(str(c) for c in index_columns) if index_columns else 'NONE'} | "
+                    f"{index.get('unique', 'UNKNOWN')} | {index.get('unknown', True)} | {index.get('needs_review', True)} |"
                 )
         else:
             lines.append("- `NONE`")
