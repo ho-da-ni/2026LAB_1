@@ -104,6 +104,15 @@ lab generate db-schema \
   --output ./artifacts/run-001/DB_SCHEMA.md
 ```
 
+Local Oracle smoke output example:
+
+```bash
+lab generate db-schema \
+  --input artifacts/db/local-oracle/db_collection.json \
+  --json-output artifacts/db/local-oracle/db_schema.json \
+  --output artifacts/docs/local-oracle/db_spec.md
+```
+
 ### `lab diff`
 두 Git 기준점 사이의 변경 파일과 영향 범위를 수집하고 `changed_files.json`을 생성한다.
 실패 처리(exit code, 최소 기록 필드, 체크 이름)는 `docs/DIFF_FAILURE_CONTRACT.md`를 따른다.

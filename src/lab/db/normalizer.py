@@ -163,6 +163,32 @@ def _normalize_fk(raw: Any, *, owner: str, table_name: str) -> dict[str, Any]:
     }
 
 
+def _normalize_index(raw: Any, *, owner: str, table_name: str) -> dict[str, Any]:
+    item = raw if isinstance(raw, dict) else {}
+    index_name = str(item.get("index_name", item.get("name", "UNKNOWN"))).upper()
+
+    columns_raw = item.get("columns")
+    if isinstance(columns_raw, list) and columns_raw:
+        columns = [str(column).upper() for column in columns_raw if str(column).strip()]
+    else:
+        column_name = str(item.get("column_name", item.get("column", "UNKNOWN"))).upper()
+        columns = [] if column_name == "UNKNOWN" else [column_name]
+
+    uniqueness = str(item.get("uniqueness", "")).strip().upper()
+    unique = _to_bool(item.get("unique"), default=uniqueness == "UNIQUE")
+
+    unknown = index_name == "UNKNOWN" or len(columns) == 0
+    needs_review = _to_bool(item.get("needs_review"), default=unknown)
+
+    return {
+        "index_name": index_name,
+        "columns": columns,
+        "unique": unique,
+        "needs_review": needs_review,
+        "unknown": unknown,
+    }
+
+
 def _normalize_table(raw: Any) -> dict[str, Any]:
     item = raw if isinstance(raw, dict) else {}
     owner = str(item.get("owner", item.get("schema_name", item.get("schema", "UNKNOWN"))).upper())
@@ -182,6 +208,10 @@ def _normalize_table(raw: Any) -> dict[str, Any]:
     foreign_keys = [_normalize_fk(fk, owner=owner, table_name=table_name) for fk in foreign_keys_raw] if isinstance(foreign_keys_raw, list) else []
     foreign_keys = sorted(foreign_keys, key=lambda fk: fk.get("fk_id", "UNKNOWN"))
 
+    indexes_raw = item.get("indexes")
+    indexes = [_normalize_index(index, owner=owner, table_name=table_name) for index in indexes_raw] if isinstance(indexes_raw, list) else []
+    indexes = sorted(indexes, key=lambda index: index.get("index_name", "UNKNOWN"))
+
     evidence = _normalize_evidence(
         item.get("evidence", item.get("source_evidence")),
         fallback_view="ALL_TABLES",
@@ -191,9 +221,10 @@ def _normalize_table(raw: Any) -> dict[str, Any]:
 
     has_unknown_column = any(_to_bool(col.get("unknown")) for col in columns)
     has_unknown_fk = any(_to_bool(fk.get("unknown")) for fk in foreign_keys)
+    has_unknown_index = any(_to_bool(index.get("unknown")) for index in indexes)
     pk_unknown = _to_bool(primary_key.get("unknown")) if isinstance(primary_key, dict) else False
 
-    unknown = owner == "UNKNOWN" or table_name == "UNKNOWN" or len(columns) == 0 or has_unknown_column or has_unknown_fk or pk_unknown
+    unknown = owner == "UNKNOWN" or table_name == "UNKNOWN" or len(columns) == 0 or has_unknown_column or has_unknown_fk or has_unknown_index or pk_unknown
     needs_review = _to_bool(item.get("needs_review"), default=unknown)
 
     return {
@@ -204,6 +235,7 @@ def _normalize_table(raw: Any) -> dict[str, Any]:
         "columns": columns,
         "primary_key": primary_key,
         "foreign_keys": foreign_keys,
+        "indexes": indexes,
         "evidence": evidence,
         "needs_review": needs_review,
         "unknown": unknown,
