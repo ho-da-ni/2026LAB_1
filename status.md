@@ -93,6 +93,8 @@
 - `python -m py_compile src/lab/db/oracle_collector.py src/lab/commands/collect_db.py src/lab/db/normalizer.py src/lab/quality/validate_db.py` 재실행 결과 PASS 확인.
 - `git diff --check` 재실행 결과 PASS 확인.
 
+- `LLM_MODE=off PYTHONPATH=src python -m lab analyze --repo . --output-dir artifacts/e2e-llm-off/run1` + `LLM_MODE=off PYTHONPATH=src python -m lab diff --repo . --base HEAD~1 --head HEAD --output artifacts/e2e-llm-off/run1/changed_files.json` + `LLM_MODE=off PYTHONPATH=src python -m lab validate` + `LLM_MODE=off PYTHONPATH=src python -m lab generate api` → 부분 성공(E2E-LLM-OFF). analyze/diff 산출물 생성 성공, validate/generate는 현재 TODO 메시지로 미구현 확인.
+
 ## 결정사항 / 리스크
 - 결정: `generated_at_utc`는 payload 유지, fingerprint 계산에서는 제외.
 - 결정: S06 검증용 hidden test hook 유지(운영 경로 오염 방지).
